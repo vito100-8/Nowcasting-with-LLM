@@ -4,9 +4,10 @@
 # Répertoire de travail actif
 #############################
 
-setwd(dirname(getActiveDocumentContext()$path))
 
-here::i_am("LLM_noText.R")
+here::i_am("Parametres_generaux.R")
+
+setwd(dirname(getActiveDocumentContext()$path))
 
 load_dot_env('.env')
 
