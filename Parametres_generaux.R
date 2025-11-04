@@ -25,7 +25,7 @@ n_repro <- 2  # Nombre de prévisions générées par date
 #df_date <- as.Date(c("2012-01-03")) #POUR TESTER : à changer manuellement
 
 #Dates utilisées
-dates <- read_xlsx(here("dates_prev.xlsx"))
+dates <- read_xlsx(here("dates_prev.xlsx")) #possible aussi de prendre df_date (dates <- df_date)
 
 # API Key (pour ellmer on utilise API_KEY_GEMINI)
 cle_API <- Sys.getenv("API_KEY_GEMINI")
