@@ -25,6 +25,9 @@ chat_gemini <- chat_google_gemini( system_prompt = sys_prompt,
                                    params(temperature = temp_LLM, max_tokens = 5000)
 )
 
+document_folder_BDF <- "docEMC_clean"
+document_folder_INSEE <- "INSEE_Scrap"
+
 
 ######################################
 #Données utilisées
@@ -332,101 +335,6 @@ print("Enregistré: resultats_INSEE_Gemini_all.xlsx \n")
 
 t2 <- Sys.time()
 print(diff(range(t1, t2)))
-
-
-##################
-#Stats Descriptives
-###################
-
-bdf_text_long   <- to_long(df_results_all_BDF, "BDF")
-insee_text_long <- to_long(df_results_all_INSEE, "INSEE")
-
-both_text_long <- bind_rows(bdf_text_long, insee_text_long)
-
-
-# Stats descriptives simples
-stats_des_text <- both_text_long |>
-  group_by(Date, source) |>
-  summarise(
-    Moyenne = mean(forecast, na.rm = TRUE),
-    Médiane = median(forecast, na.rm = TRUE),
-    Variance = var(forecast, na.rm = TRUE),
-    EcartType = sd(forecast, na.rm = TRUE),
-    Skewness = skewness(forecast, na.rm = TRUE),
-    Kurtosis = kurtosis(forecast, na.rm = TRUE),
-    Moyenne_Confiance = mean(confidence, na.rm = TRUE),
-    .groups = "drop"
-  )
-
-
-#Arrangement des df afin de pouvoir mieux les exploiter
-df_BDF_text   <- df_results_all_BDF |> select(Date, starts_with("forecast_"))
-df_INSEE_text  <- df_results_all_INSEE |> select(Date, starts_with("forecast_"))
-
-colnames(df_BDF_text)[-1]   <- paste0("BDF_",   seq_along(colnames(df_BDF_text)[-1]))
-colnames(df_INSEE_text)[-1] <- paste0("INSEE_", seq_along(colnames(df_INSEE_text)[-1]))
-
-df_BDF_text <- df_BDF_text |> 
-  select(!Date)
-
-df_INSEE_text <- df_INSEE_text |> 
-  select(!Date)
-
-#Corrélation entre les prévisions
-BDF_cor   <- rowMeans(df_BDF_text, na.rm = TRUE)
-INSEE_cor <- rowMeans(df_INSEE_text, na.rm = TRUE)
-
-
-correlation <- cor(BDF_cor, INSEE_cor, method = "spearman") ## à revoir/vérifier avec plus d'observations parce que affiche 1
-#normalement ok :  moyennes à chaque date de forecast (testées avec 4 dates, output correlation =~ 0.889)
-
-
-
-#Test de moyenne entre BDF et INSEE
-
-t.test(df_BDF_text, df_INSEE_text, var.equal = FALSE) 
-# En supposant d'après les résultats précédent (mais à confirmer 
-# avec un plus gros échantillon) que la variances est différente entre les deux
-
-
-
-
-############
-#GRAPHIQUES
-###########
-
-#Distribution  des prev selon BDF/INSEE pour chaque date : violin (((à voir lequel plus pertinent)))
-ggplot(both_text_long, aes(x = source, y = as.numeric(forecast), fill = source)) +
-  geom_violin(alpha = 0.6, trim = FALSE) +
-  facet_wrap(~ Date, scales = "free_y") +
-  labs(
-    title = "Distribution des prévisions par organisme",
-    y = "Prévision",
-    x = "Organisme"
-  ) +
-  theme_minimal()
-
-# Boxplot
-ggplot(both_text_long, aes(x = source, y = as.numeric(forecast), fill = source)) +
-  geom_boxplot(alpha = 0.7, outlier.shape = 16, outlier.size = 1.5) +
-  facet_wrap(~ Date, scales = "free_y") +
-  labs(
-    title = "Distribution des prévisions par organisme (Boxplot)",
-    y = "Prévision",
-    x = "Organisme"
-  ) +
-  theme_minimal()
-
-#Densité
-ggplot(both_text_long, aes(x = as.numeric(forecast), fill = source, color = source)) +
-  geom_density(alpha = 0.4) +
-  facet_wrap(~ Date, scales = "free") +
-  labs(
-    title = "Distribution des prévisions BDF vs INSEE",
-    x = "Prévision",
-    y = "Densité"
-  ) +
-  theme_minimal()
 
 
 
