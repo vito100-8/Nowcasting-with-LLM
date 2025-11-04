@@ -26,6 +26,16 @@ get_last_doc <- function(date_prev_df, target_date) {
   return(dernier)
 }
 
+#Rechercher l'EMC du lendemain de la date de prévision
+get_next_doc <- function(cur_day) {
+  # target_date is Date of the corresponding EMC
+  target_date <- cur_day + 1L
+  next_doc <- date_publi_prev |>
+    filter(date_finale_d == as.Date(target_date))
+  return(next_doc$fichier)
+}
+
+
 # path_from_docname : renvoie chemin complet vers le ou les PDF local/locaux
 path_from_docname <- function(doc_name, folder) {
   if (is.null(doc_name)) return(NULL)
@@ -94,14 +104,6 @@ merge_pdfs <- function(files, output_path) {
 # LLM_Text
 ##########
 
-#Rechercher l'EMC du lendemain de la date de prévision
-get_next_doc <- function(cur_day) {
-  # target_date is Date of the corresponding EMC
-  target_date <- cur_day + 1L
-  next_doc <- date_publi_prev |>
-    filter(date_finale_d == as.Date(target_date))
-  return(next_doc$fichier)
-}
 
 
 # Obtenir depuis le dossier les 3 documents : SER, BAT, et EMI en les cherchant par date
@@ -276,94 +278,6 @@ df_to_markdown_table <- function(df, title = NULL, max_rows = 50) {
 
 
 
-#######################
-#LLM_rolling_text
-######################
-
-get_docs_to_merge <- function(date_to_use, 
-                              df_date, 
-                              document_folder_BDF,
-                              document_folder_INSEE ,
-                              output_folder_BDF,
-                              output_folder_INSEE) {
-  
-  #sécurité 
-  if (!dir.exists(output_folder_BDF)) dir.create(output_folder_BDF, recursive = TRUE)
-  if (!dir.exists(output_folder_INSEE)) dir.create(output_folder_INSEE, recursive = TRUE)
-  
-  # identification du trimestre et du rang dans le trimestre
-  m <- month(date_to_use)
-  y <- year(date_to_use)
-  
-  if (m == 1) {
-    # janvier -> dernier trimestre de l'année précédente
-    months_in_quarter <- 3
-    year_ref <- y - 1
-    q_trim <- 4
-  } else {
-    q_trim <- ((m - 2) %/% 3) + 1
-    year_ref <- y
-    months_in_quarter <- ((m - 2) %% 3) + 1
-  }
-  
-  message(sprintf("Date: %s -> T%d (%d) mois dans le trimestre", 
-                  format(current_date, "%Y-%m-%d"), q_trim, months_in_quarter))
- 
-  # construire la séquence des mois du trimestre (ex : q_trim = 1 alor de  Jan-Mar)
-  quarter_first_month <- (q_trim - 1) * 3 + 1
-  quarter_months <- quarter_first_month:(quarter_first_month + 2)
-  # on sélectionne les mois voulus selon la date (ordre ancien->récent)
-  months_to_fetch <- quarter_months[1:months_in_quarter]
-
- #Partie BDF
-  
-  BDF_docs_to_merge <- c()
-  current_ref_date <- date_to_use
-
-    #On va prendre tous les EMC publié à la date ou avant et n'en garder que le nombre souhaité (sleon position du mois dans trimestre)
-    candidats <- date_publi_prev |>
-      filter(date_finale_d <= as.Date(current_ref_date) + 1L)
-    next_doc_name <- candidats |>
-      arrange(desc(date_finale_d))
-    
-  docs_selected <- head(candidats$fichier, months_in_quarter)
-    
-   # chemins PDF complets
-  BDF_docs_to_merge <- file.path(document_folder_BDF, selected)
-  
-  merge_pdfs(BDF_docs_to_merge, BDF_combined_path)
-  
-  #BOUCLE INSEE
-  INSEE_docs_to_merge <- c()
-  months_desc <- rev(months_to_fetch) 
-  
-  for (mm in months_desc) {
-    
-    target_year <- year_ref
-    target_month <- mm 
-   
-    # Construire noms attendus AAAA_MM_TYPE.pdf
-    emi_file <- file.path(document_folder_INSEE, sprintf("%04d_%02d_EMI.pdf", target_year, target_month))
-    ser_file <- file.path(document_folder_INSEE, sprintf("%04d_%02d_SER.pdf", target_year, target_month))
-    bat_file <- file.path(document_folder_INSEE, sprintf("%04d_%02d_BAT.pdf", target_year, target_month))
-    # ordre demandé : EMI, SER, BAT (si existent) ; on ajoute seulement s'ils existent
-    if (file.exists(emi_file)) INSEE_docs_to_merge <- c(INSEE_docs_to_merge, emi_file)
-    if (file.exists(ser_file)) INSEE_docs_to_merge <- c(INSEE_docs_to_merge, ser_file)
-    if (file.exists(bat_file)) INSEE_docs_to_merge <- c(INSEE_docs_to_merge, bat_file)
-  }
-    
-  INSEE_combined_path <- file.path(output_folder_INSEE,
-                        paste0("combined_INSEE_", format(current_date, "%Y%m%d"), ".pdf"))
-  merge_pdfs(INSEE_docs_to_merge, INSEE_combined_path)
-
-  
-  #RENVOI DES CHEMINS DES FICHIERS BDF ET INSEE
-  return(list(
-    BDF_path = BDF_combined_path,
-    INSEE_path = INSEE_combined_path
-
-  ))
-}
 
 
 ##############################

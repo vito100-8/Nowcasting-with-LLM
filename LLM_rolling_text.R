@@ -30,7 +30,8 @@ document_folder_INSEE <- "INSEE_Scrap"
 output_folder_BDF <- "BDF_files_used"
 output_folder_INSEE <- "INSEE_files_used"
 
-
+#Initialisation dates
+dates <- df_date
 
 ###################################
 # Prompts 
@@ -109,6 +110,7 @@ if (english == 1) {
 # Boucle principale
 #####################
 
+
 forecast_confidence_pattern <- "([+-]?\\d+\\.?\\d*)\\s*\\(\\s*(\\d{1,3})\\s*\\)"
 results_BDF <- list()
 results_INSEE <- list()
@@ -118,15 +120,53 @@ t1 <- Sys.time()
 for (dt in as.Date(dates$`Date Prevision`)) {
   current_date <- as.Date(dt)
   
-  # Récupération des documents
-  docs <- get_docs_to_merge(
-    date_to_use = current_date,
-    df_date = dates,
-    document_folder_BDF = document_folder_BDF,
-    document_folder_INSEE = document_folder_INSEE,
-    output_folder_BDF = output_folder_BDF,
-    output_folder_INSEE = output_folder_INSEE
-  )
+  #sécurité 
+  if (!dir.exists(output_folder_BDF)) dir.create(output_folder_BDF, recursive = TRUE)
+  if (!dir.exists(output_folder_INSEE)) dir.create(output_folder_INSEE, recursive = TRUE)
+  
+  # identification du trimestre et du rang dans le trimestre
+  m <- month(current_date)
+  y <- year(current_date)
+  
+  if (m == 1) {
+    # janvier -> dernier trimestre de l'année précédente
+    months_in_quarter <- 3
+    year_ref <- y - 1
+    q_trim <- 4
+  } else {
+    q_trim <- ((m - 2) %/% 3) + 1
+    year_ref <- y
+    months_in_quarter <- ((m - 2) %% 3) + 1
+  }
+  
+  message(sprintf("Date: %s -> T%d (%d) mois dans le trimestre", 
+                  format(current_date, "%Y-%m-%d"), q_trim, months_in_quarter))
+  
+  # construire la séquence des mois du trimestre (ex : q_trim = 1 alor de  Jan-Mar)
+  quarter_first_month <- (q_trim - 1) * 3 + 1
+  quarter_months <- quarter_first_month:(quarter_first_month + 2)
+  # on sélectionne les mois voulus selon la date (ordre ancien->récent)
+  months_to_fetch <- quarter_months[1:months_in_quarter]
+  
+  #Partie BDF
+  
+  BDF_docs_to_merge <- c()
+  current_ref_date <- current_date
+  date_pub <- date_publi_prev
+  #On va prendre tous les EMC publié à la date ou avant et n'en garder que le nombre souhaité (selon position du mois dans trimestre)
+  candidats <- date_pub |>
+    filter(date_finale_d <= as.Date(current_ref_date) + 1L)
+  last_docs<- candidats |>
+    arrange(desc(date_finale_d))
+  
+  docs_selected <- head(last_docs$fichier, months_in_quarter)
+  path_docs <- path_from_docname(docs_selected, folder = document_folder_BDF)
+  # chemins PDF complets
+  BDF_docs_to_merge <- file.path(path_docs)
+  BDF_combined_path <- file.path(output_folder_BDF,
+                                 paste0("combined_BDF_", format(current_date, "%Y%m%d"), ".pdf"))
+  merge_pdfs(BDF_docs_to_merge, BDF_combined_path)
+  
   
   # Paramètre de prévision
   m <- month(current_date)
@@ -140,8 +180,8 @@ for (dt in as.Date(dates$`Date Prevision`)) {
   }
   
   #BDF
-  if (file.exists(docs$BDF_path)) {
-    uploaded_bdf <- google_upload(docs$BDF_path,
+  if (file.exists(BDF_combined_path)) {
+    uploaded_bdf <- google_upload(BDF_combined_path,
                                   base_url = "https://generativelanguage.googleapis.com/", 
                                   api_key = cle_API)
     
@@ -165,8 +205,32 @@ for (dt in as.Date(dates$`Date Prevision`)) {
   }
   
   # INSEE
-  if (file.exists(docs$INSEE_path)) {
-    uploaded_insee <- google_upload(docs$INSEE_path, 
+  #BOUCLE INSEE
+  
+  INSEE_docs_to_merge <- c()
+  months_desc <- rev(months_to_fetch) 
+  
+  for (mm in months_desc) {
+    
+    target_year <- year_ref
+    target_month <- mm 
+    
+    # Construire noms attendus AAAA_MM_TYPE.pdf
+    emi_file <- file.path(document_folder_INSEE, sprintf("%04d_%02d_EMI.pdf", target_year, target_month))
+    ser_file <- file.path(document_folder_INSEE, sprintf("%04d_%02d_SER.pdf", target_year, target_month))
+    bat_file <- file.path(document_folder_INSEE, sprintf("%04d_%02d_BAT.pdf", target_year, target_month))
+    # ordre demandé : EMI, SER, BAT (si existent) ; on ajoute seulement s'ils existent
+    if (file.exists(emi_file)) INSEE_docs_to_merge <- c(INSEE_docs_to_merge, emi_file)
+    if (file.exists(ser_file)) INSEE_docs_to_merge <- c(INSEE_docs_to_merge, ser_file)
+    if (file.exists(bat_file)) INSEE_docs_to_merge <- c(INSEE_docs_to_merge, bat_file)
+  }
+  
+  INSEE_combined_path <- file.path(output_folder_INSEE,
+                                   paste0("combined_INSEE_", format(current_date, "%Y%m%d"), ".pdf"))
+  merge_pdfs(INSEE_docs_to_merge, INSEE_combined_path)
+  
+  if (file.exists(INSEE_combined_path)) {
+    uploaded_insee <- google_upload(INSEE_combined_path, 
                                     base_url = "https://generativelanguage.googleapis.com/", 
                                     api_key = cle_API)
     prompt_insee <- prompt_template("INSEE", current_date, q_trim, year_prev)
@@ -197,3 +261,5 @@ write.xlsx(df_results_rolling_text_INSEE, "resultats_INSEE_Gemini_rolling_text.x
 
 t2 <- Sys.time()
 print(diff(range(t1, t2)))
+
+
