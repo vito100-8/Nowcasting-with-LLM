@@ -348,6 +348,47 @@ to_long <- function(df, source_name) {
     )
 }
 
+
+
+#############################
+# COMP RESULTS
+############################
+
+# Fonction pour appareiller la date de prévision au PIB du trimestre adéquate
+map_forecast_to_quarter <- function(date_forecast) {
+  m <- month(date_forecast)
+  y <- year(date_forecast)
+  
+  if (m %in% c(11, 12, 1)) {
+    q <- 4
+    y <- ifelse(m == 1, y - 1, y)  
+  } else if (m %in% 2:4) {
+    q <- 1
+  } else if (m %in% 5:7) {
+    q <- 2
+  } else {
+    q <- 3
+  }
+  return(c(y, q))
+}
+
+
+
+# Fonction pour calculer les erreurs avec prise en compte du trimestre
+compute_errors <- function(df_model, df_obs) {
+  df_model2 <- df_model |>
+    mutate(Date_forecast = as.Date(Date)) |>
+    rowwise() |>
+    mutate(tmp = list(map_forecast_to_quarter(Date_forecast))) |>
+    mutate(Year = tmp[1], Quarter = tmp[2]) |>
+    select(-tmp)
+  
+  df_model2 |>
+    left_join(df_obs, by = c("Year", "Quarter")) |>
+    mutate(across(starts_with("forecast_"), 
+                  ~ .x - PIB_PR, 
+                  .names = "error_{.col}")) 
+}
 ################################
 # FONCTION LLM + ECONOMETRIE
 #################################

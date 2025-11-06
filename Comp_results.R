@@ -1,11 +1,24 @@
 ########## COMPARAISON DES RESULTATS ENTRE LES DIFFERENTS MODELES ####################
 
-rm(list = ls())  
+rm(list = ls()) 
+
+##########
+#ATTENTION: n'exécuter que les "source" nécessaires car sinon lance toutes les boucles de chaque fichier
+###########
 source("Library_Nowcasting_LLM.R")
 source("LLM_functions.R")
 source("Script_dates_prev.R")
 source("Parametres_generaux.R")
-
+source("LLM_AR.R")
+source("LLM_Text.R")
+source("LLM_noText.R")
+source("LLM_just_text.R")
+source("LLM_excel.R")
+source("LLM_excel_with_error.R")
+source("LLM_rolling_text.R")
+source("LLM_Text_12.R")
+source("LLM_all_inputs.R")
+source("Modèle_ISMA.R")
 
 ############################
 # Telechargement du PIB réel
@@ -20,8 +33,11 @@ pib_reel <- pib_reel |>
 #Stats Descriptives
 ###################
 
-bdf_long   <- to_long(df_results_BDF, "BDF")
-insee_long <- to_long(df_results_INSEE, "INSEE")
+# wide_BDF <- df_xxxx
+#wide_insee <- df_xxxx   Choisir selon le noms des résultats
+
+bdf_long   <- to_long(wide_BDF, "BDF")
+insee_long <- to_long(wide_insee, "INSEE")
 
 both_long <- bind_rows(bdf_long, insee_long)
 
@@ -42,8 +58,8 @@ stats_des <- both_long |>
 
 #Corrélation entre les prévisions
 
-df_BDF   <- df_results_BDF |> select(Date, starts_with("forecast_"))
-df_INSEE <- df_results_INSEE |> select(Date, starts_with("forecast_"))
+df_BDF   <- wide_bdf |> select(Date, starts_with("forecast_"))
+df_INSEE <- wide_insee |> select(Date, starts_with("forecast_"))
 
 colnames(df_BDF)[-1]   <- paste0("BDF_",   seq_along(colnames(df_BDF)[-1]))
 colnames(df_INSEE)[-1] <- paste0("INSEE_", seq_along(colnames(df_INSEE)[-1]))
@@ -59,17 +75,15 @@ BDF_vec   <- rowMeans(df_BDF, na.rm = TRUE)
 INSEE_vec <- rowMeans(df_INSEE, na.rm = TRUE)
 
 
-correlation <- cor(BDF_vec, INSEE_vec, method = "spearman") ## à revoir/vérifier avec plus d'observations parce que affiche 1
-#normalement ok :  moyennes à chaque date de forecast (testées avec 4 dates, output correlation =~ 0.889)
+correlation <- cor(BDF_vec, INSEE_vec, method = "spearman") 
 
+#correlation within date
 
-#autre moyen (meilleur ?) : correlation within date
-
-df_BDF_long <- df_results_BDF |>
+df_BDF_long <- wide_bdf |>
   pivot_longer(cols = starts_with("forecast_"), names_to = "repro", values_to = "BDF_forecast") |>
   select("Date", "repro","BDF_forecast")
 
-df_INSEE_long <- df_results_INSEE |>
+df_INSEE_long <- wide_insee |>
   pivot_longer(cols = starts_with("forecast_"), names_to = "repro", values_to = "INSEE_forecast") |>
   select("Date", "repro","INSEE_forecast")
 
@@ -91,10 +105,9 @@ t.test(t.test_BDF, t.test_INSEE, var.equal = FALSE)
 
 
 
-
-############
+################
 #GRAPHIQUES
-###########
+################
 
 #Distribution  des prev selon BDF/INSEE pour chaque date : violin (((à voir lequel plus pertinent)))
 ggplot(both_long, aes(x = source, y = as.numeric(forecast), fill = source)) +
@@ -131,13 +144,8 @@ ggplot(both_long, aes(x = as.numeric(forecast), fill = source, color = source)) 
 
 
 ###########################
-# CALCUL RMSE ET MAE
-########################
-
-res_noText <- df_results_BDF 
-res_Text <- df_results_text_BDF # à modifier avec INSEE en plus ensuite
-res_ts<- df_results_TS
-res_ISMA <- df_ISMA
+# COMPRAISON RMSE ET MAE
+###########################
 
 # Prendre le trimestre observé
 
@@ -153,39 +161,8 @@ pib_reel <- pib_reel |>
     ) )
 
 
-# Fonction pour appareiller la date de prévision au PIB du trimestre adéquate
-map_forecast_to_quarter <- function(date_forecast) {
-  m <- month(date_forecast)
-  y <- year(date_forecast)
-  
-  if (m %in% c(11, 12, 1)) {
-    q <- 4
-    y <- ifelse(m == 1, y - 1, y)  
-  } else if (m %in% 2:4) {
-    q <- 1
-  } else if (m %in% 5:7) {
-    q <- 2
-  } else {
-    q <- 3
-  }
-  return(c(y, q))
-}
 
-# Fonction pour calculer les erreurs avec prise en compte du trimestre
-compute_errors <- function(df_model, df_obs) {
-  df_model2 <- df_model |>
-    mutate(Date_forecast = as.Date(Date)) |>
-    rowwise() |>
-    mutate(tmp = list(map_forecast_to_quarter(Date_forecast))) |>
-    mutate(Year = tmp[1], Quarter = tmp[2]) |>
-    select(-tmp)
-  
-  df_model2 |>
-    left_join(df_obs, by = c("Year", "Quarter")) |>
-    mutate(across(starts_with("forecast_"), 
-                  ~ .x - PIB_PR, 
-                  .names = "error_{.col}")) 
-}
+
 
 # Appliquer aux trois modèles
 errors_noText <- compute_errors(res_noText, pib_reel)|>
@@ -220,7 +197,7 @@ errors <- errors_ts |>
 
 #################################
 #Comparaison erreurs modèles LLMs
-#######################
+##################################
 
 #Moyenne des erreurs à chaque date
 Avg_error_LLM <- errors |>
@@ -344,6 +321,4 @@ RMSE_i_M3 <- sqrt(mean((final_df$forecast_M3 - final_df$PIB)^2))
 
 recap_df <- data.frame(MAE_M1, MAE_M2, MAE_M3,MAE_i_M1,MAE_i_M2,MAE_i_M3, RMSE_M1, RMSE_M2, RMSE_M3, RMSE_i_M1, RMSE_i_M2, RMSE_i_M3)
 recap_df
-
-
 
