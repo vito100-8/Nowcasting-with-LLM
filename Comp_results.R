@@ -33,7 +33,7 @@ pib_reel <- pib_reel |>
 #Stats Descriptives
 ###################
 
-# wide_BDF <- df_xxxx
+#wide_BDF <- df_xxxx
 #wide_insee <- df_xxxx   Choisir selon le noms des résultats
 
 bdf_long   <- to_long(wide_BDF, "BDF")
@@ -146,6 +146,14 @@ ggplot(both_long, aes(x = as.numeric(forecast), fill = source, color = source)) 
 ###########################
 # COMPRAISON RMSE ET MAE
 ###########################
+
+##
+#2 types de résultats différents : modèle LLM et modèle économétrique
+
+#HARMONISATION DES MODELES
+
+##ISMA
+
 
 # Prendre le trimestre observé
 
