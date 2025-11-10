@@ -56,6 +56,8 @@ if (english == 1) {
       ", provide a score between -4 and +4 assessing the performance of French economic activity in the ", current_quarter, " quarter of ", y_prev,
       " and a confidence level (integer 0–100). ",
       "-4 means significantly contracting activity and +4 means a significantly expanding activity.",
+      "Output EXACTLY in this format on a single line (no extra text):\n",
+      "<score> (<confidence>)\nExample: +3 (80)\n",
       "Do NOT use any information published after ", format(d, "%d %B %Y"), "."
     )
   }
@@ -77,10 +79,12 @@ if (english == 1) {
       format(d, "%d %B %Y"), ". ",
       "Vous recevrez un document concernant la situation actuelle et passée de l'économie française. ",
       "En utilisant UNIQUEMENT les informations contenues dans ce document et celles disponibles au plus tard le ", format(d, "%d %B %Y"),
-      ", fournissez un score compris entre -4 et +4 décrivant l'activité économique française pour le ",
+      ", fournissez un score compris entre -4 et +4 évaluant l'activité économique française pour le ",
       trimestre_actuel, " trimestre ", y_prev,
       " et un niveau de confiance (entier de 0–100).. ",
-      ". -4 décrit une contraction significative de l'activité et +4 décrit une activité en expansion significative.",
+      "Renvoyez EXACTEMENT sur une seule ligne (aucun texte supplémentaire) :\n",
+      "<score> (<confiance>)\nExemple : +3 (80)\n",
+      ". -4 décrit une contraction significative de l'activité et +4 décrit une expansion significative de l'activité.",
       "N'utilisez AUCUNE information publiée après le ", format(d, "%d %B %Y"), "."
     )
   }
@@ -91,6 +95,8 @@ if (english == 1) {
 # Boucle principale BDF
 ###################################
 
+#Création chemin d'accès
+dir.create("Both_files_used", showWarnings = FALSE)
 
 # Forecast regex pattern qui sera appelé dans la boucle pour parse
 forecast_confidence_pattern <- "([+-]?\\d+\\.?\\d*)\\s*\\(\\s*(\\d{1,3})\\s*\\)"
