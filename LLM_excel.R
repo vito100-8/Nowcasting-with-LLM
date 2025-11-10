@@ -151,7 +151,7 @@ for (dt in as.Date(dates$`Date Prevision`)) {
   
   # Tronquage
   df_temp <- df_enq_BDF |> 
-    filter(dates <= as.Date(d))
+    filter(dates <= as.Date(dt))
   
 
   # Nom du fichier Excel
@@ -236,7 +236,7 @@ results_uploads_INSEE <- list()
 row_id_INSEE <- 1
 
 for (dt in as.Date(dates$`Date Prevision`)) {
-  current_date <- as.Date(d)
+  current_date <- as.Date(dt)
   
   
   # Tronquage
