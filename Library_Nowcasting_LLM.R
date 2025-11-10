@@ -1,7 +1,5 @@
 #Script with all the libraries needed
 
-rm(list = ls())
-
 library(pdftools)
 library(qpdf)
 library(here)

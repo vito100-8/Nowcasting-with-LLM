@@ -1,10 +1,5 @@
 ## FONCTION UTILITAIRES ##
 
-rm(list = ls())  
-source("Library_Nowcasting_LLM.R")
-source("Script_dates_prev.R")
-source("Parametres_generaux.R")
-
 
 #############
 #Multi-usages

@@ -1,12 +1,6 @@
 # SCRIPT PARAMETRES GENERAUX
 
-
-rm(list = ls())  
 source("Library_Nowcasting_LLM.R")
-source("LLM_functions.R")
-source("Script_dates_prev.R")
-source("Parametres_generaux.R")
-
 
 ##############################
 # Répertoire de travail actif
