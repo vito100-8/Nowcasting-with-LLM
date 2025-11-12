@@ -21,8 +21,8 @@ load_dot_env('.env')
 
 #Paramètres généraux
 english <- 1 # 1 si prompt en anglais
-temp_LLM <- 0.7  # Niveau de créativité des réponses 0.3/0.7/1.5 (castro-Leibovici)
-n_repro <- 2  # Nombre de prévisions générées par date
+temp_LLM <- 0.5  # Niveau de créativité des réponses 0.3/0.7/1.5 (castro-Leibovici)
+n_repro <- 10  # Nombre de prévisions générées par date
 
 
 # Initialisation des dates
@@ -66,8 +66,3 @@ system_prompt <- function(x){
   }
   return(txt_prompt)
 }
-
-
-
-
-
