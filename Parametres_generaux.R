@@ -34,6 +34,9 @@ dates <- read_xlsx(here("dates_prev.xlsx")) #possible aussi de prendre df_date (
 # API Key (pour ellmer on utilise API_KEY_GEMINI)
 cle_API <- Sys.getenv("API_KEY_GEMINI")
 
+#Création du dossier de résultats
+dir.create("./Results", showWarnings = FALSE, recursive = TRUE)
+
 ########################################
 # Choix du système prompt
 #######################################

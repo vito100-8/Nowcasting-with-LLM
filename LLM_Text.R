@@ -189,8 +189,8 @@ for (dt in as.Date(dates$`Date Prevision`)) {
 df_results_text_BDF <- do.call(rbind, results_BDF)
 
 # Enregistrement
-write.xlsx(df_results_text_BDF, file = "results_BDF_text.xlsx", sheetName = 'prevision', rowNames = FALSE)
-print("Enregistré: results_BDF_text.xlsx \n")
+write.xlsx(df_results_text_BDF, file = "Results/BDF_text.xlsx", sheetName = 'prevision', rowNames = FALSE)
+print("Enregistré: Results/BDF_text.xlsx \n")
 
 t2 <- Sys.time()
 print(diff(range(t1, t2)))
@@ -288,8 +288,8 @@ df_results_text_INSEE <- do.call(rbind, results_INSEE)
 
 
 # Enregistrement
-write.xlsx(df_results_text_INSEE, file = "results_INSEE_text.xlsx", sheetName = 'prevision', rowNames = FALSE)
-print("Enregistré: results_INSEE_text.xlsx \n")
+write.xlsx(df_results_text_INSEE, file = "Results/INSEE_text.xlsx", sheetName = 'prevision', rowNames = FALSE)
+print("Enregistré: Results/INSEE_text.xlsx \n")
 
 t2 <- Sys.time()
 print(diff(range(t1, t2)))

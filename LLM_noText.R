@@ -185,11 +185,11 @@ for (dt in as.Date(dates$`Date Prevision`)) {
   df_results_INSEE <- do.call(rbind, results_INSEE_list)
   
   # Sauvegarde des deux dataframes séparément
-  write.xlsx(df_results_BDF, file = "results_BDF_noText.xlsx", sheetName = 'prevision', rowNames = FALSE)
-  cat("Les résultats pour la BDF ont été sauvegardés dans le fichier : results_BDF_noText.xlsx\n")
+  write.xlsx(df_results_BDF, file = "Results/BDF_noText.xlsx", sheetName = 'prevision', rowNames = FALSE)
+  cat("Les résultats pour la BDF ont été sauvegardés dans le fichier : Results/BDF_noText.xlsx\n")
   
-  write.xlsx(df_results_INSEE, file = "results_INSEE_noText.xlsx", sheetName = 'prevision', rowNames = FALSE)
-  cat("Les résultats pour l'INSEE ont été sauvegardés dans le fichier : results_INSEE_noText.xlsx\n")
+  write.xlsx(df_results_INSEE, file = "Results/INSEE_noText.xlsx", sheetName = 'prevision', rowNames = FALSE)
+  cat("Les résultats pour l'INSEE ont été sauvegardés dans le fichier : Results/INSEE_noText.xlsx\n")
   
   t2 <- Sys.time()
   diff(range(t1,t2))

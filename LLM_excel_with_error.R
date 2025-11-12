@@ -423,7 +423,7 @@ for (idx in seq_along(dates)) {
 
 # création excel de résultats
 df_excel_BDF <- do.call(rbind, results_uploads_BDF)
-write.xlsx(df_excel_BDF, file = "results_BDF_excel_error.xlsx", overwrite = TRUE)
+write.xlsx(df_excel_BDF, file = "Results/BDF_excel_error.xlsx", overwrite = TRUE)
 
 
 
@@ -655,6 +655,6 @@ for (idx in seq_along(dates)) {
 
 # création excel de résultats
 df_excel_INSEE <- do.call(rbind, results_uploads_INSEE)
-write.xlsx(df_excel_INSEE, file = "results_INSEE_excel_error.xlsx", overwrite = TRUE)
+write.xlsx(df_excel_INSEE, file = "Results/INSEE_excel_error.xlsx", overwrite = TRUE)
 
 

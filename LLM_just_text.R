@@ -192,8 +192,8 @@ if (length(results_BDF) > 0 ) {
 
 
 # Enregistrement
-write.xlsx(df_results_just_text_BDF, file = "results_BDF_just_text.xlsx", sheetName = 'prevision', rowNames = FALSE)
-print("Enregistré: results_BDF_just_text.xlsx \n")
+write.xlsx(df_results_just_text_BDF, file = "Results/BDF_just_text.xlsx", sheetName = 'prevision', rowNames = FALSE)
+print("Enregistré: Results/BDF_just_text.xlsx \n")
 
 t2 <- Sys.time()
 print(diff(range(t1, t2)))
@@ -296,8 +296,8 @@ if (length(results_INSEE) > 0 ) {
 
 # Enregistrement
 if (erreur == 0){
-  write.xlsx(df_results_just_text_INSEE, file = "results_INSEE_just_text.xlsx", sheetName = 'prevision', rowNames = FALSE)
-  print("Enregistré: results_INSEE_just_text.xlsx \n")
+  write.xlsx(df_results_just_text_INSEE, file = "Results/INSEE_just_text.xlsx", sheetName = 'prevision', rowNames = FALSE)
+  print("Enregistré: Results/INSEE_just_text.xlsx \n")
 }
 
 

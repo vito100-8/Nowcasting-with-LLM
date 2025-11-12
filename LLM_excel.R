@@ -225,7 +225,7 @@ for (dt in as.Date(dates$`Date Prevision`)) {
 
 # Stockage + document résultat
 df_excel_BDF <- do.call(rbind, results_uploads_BDF)
-write.xlsx(df_excel_BDF, file = "results_BDF_excel.xlsx", overwrite = TRUE)
+write.xlsx(df_excel_BDF, file = "Results/BDF_excel.xlsx", overwrite = TRUE)
 
 
 # INSEE #
@@ -317,7 +317,7 @@ for (dt in as.Date(dates$`Date Prevision`)) {
 
 # Stockage + document résultat
 df_excel_INSEE <- do.call(rbind, results_uploads_INSEE)
-write.xlsx(df_excel_INSEE, file = "results_INSEE_excel.xlsx", overwrite = TRUE)
+write.xlsx(df_excel_INSEE, file = "Results/INSEE_excel.xlsx", overwrite = TRUE)
 
 
 
