@@ -64,7 +64,7 @@ if (english == 1) {
       "Using ONLY the information in that document and your reasoning skills and no external prior knowledge, provide a numeric forecast (decimal percent with sign, e.g., +0.3) for French real GDP growth in the ", current_quarter, " quarter of ", y_prev,
       " and a confidence level (integer 0–100). Output EXACTLY in this format on a single line (no extra text):\n",
       "<forecast> (<confidence>)\nExample: +0.3 (80)\n",
-      "Do NOT use any other information published after 11 May 2015."
+      "Do NOT use any other information published after ", format(d, "%d %B %Y"), "."
     )
   }
   
@@ -97,7 +97,7 @@ if (english == 1) {
       trimestre_actuel, " trimestre ", y_prev,
       " et un niveau de confiance (entier 0-100). Renvoyez EXACTEMENT sur une seule ligne (aucun texte supplémentaire) :\n",
       "<prévision> (<confiance>)\nExemple : +0.3 (80)\n",
-      "N'utilisez AUCUNE information publiée après le 11 mai 2015."
+      "N'utilisez AUCUNE information publiée après le ", format(d, "%d %B %Y"), "."
     )
   }
 }
