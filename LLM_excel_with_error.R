@@ -24,6 +24,7 @@ chat_gemini <- chat_google_gemini( system_prompt = sys_prompt,
 )
 
 
+
 #################################
 #Initialisation variables/données
 #################################
@@ -33,7 +34,8 @@ df_PIB<- read_xlsx("Data_BDF_INSEE.xlsx", sheet = "trimestriel")
 df_enq_BDF <- read_xlsx("Data_BDF_INSEE.xlsx", sheet = "ENQ_BDF")
 df_enq_INSEE <- read_xlsx("Data_BDF_INSEE.xlsx", sheet = "ENQ_INSEE")
 
-
+#Bien transformer les dates en un vecteur
+dates <- if (is.data.frame(dates)) as.Date(dates$`Date Prevision`) else as.Date(dates)
 
 # Variables contenant les futures erreurs de prévision
 errors_BDF <- rep(NA_real_, length(dates))
@@ -219,40 +221,102 @@ for (idx in seq_along(dates)) {
       q_quarter <- 3L
     }
     
-    # Construire les 3 forecasts mensuels: t-3 .. t-1 par rapport à la date actuelle
-    months_to_score <- seq(current_date %m-% months(3), current_date %m-% months(1), by = "month")
-    monthly_errors <- numeric(length(months_to_score))
+  
+    #But : retrouver les dates considérées dans "dates" (key = une des dates de prévision)
     
-    for (j in seq_along(months_to_score)) {
-      keym <- as.character(months_to_score[j])
-      fval <- forecasts_by_date_BDF[[keym]]
-      if (!is.null(fval) && !is.na(fval)) {
-        # trouver la valeur du PIB pour la période
-        pib_rows <- which(lubridate::year(df_PIB$dates) == q_year & lubridate::quarter(df_PIB$dates) == q_quarter)
-        actual_gdp <- NA_real_
-        if (length(pib_rows) >= 1 && "PIB_PR" %in% names(df_PIB)) actual_gdp <- as.numeric(df_PIB$PIB_PR[pib_rows[1]])
-        if (!is.na(actual_gdp)) monthly_errors[j] <- actual_gdp - as.numeric(fval) else monthly_errors[j] <- NA_real_
-      } else {
-        monthly_errors[j] <- NA_real_
+    # Identifier les mois cibles
+    target_months_str <- c(
+      format(current_date %m-% months(3), "%Y-%m"), # t-3
+      format(current_date %m-% months(2), "%Y-%m"), # t-2
+      format(current_date %m-% months(1), "%Y-%m")  # t-1
+    )
+    
+    # Créer une map de recherche (ex: "2015-02" -> "2015-02-08")
+    # On utilise le vecteur 'dates' global qui contient les clés réelles
+    dates_lookup_map <- setNames(as.character(dates), format(dates, "%Y-%m"))
+    
+    # Retrouver les clés réelles (ex: "2015-02-08", "2015-03-08", "2015-04-08")
+    # S'il n'y a pas de prévision pour un mois (ex: script démarré en cours de route, la clé sera NA
+    months_to_score_keys <- unname(dates_lookup_map[target_months_str])
+    
+    #Initialiser le vecteur d'erreurs
+    monthly_errors <- rep(NA_real_, length(months_to_score_keys))
+    
+    # Calculer les erreurs en utilisant les bonnes dates
+    for (j in seq_along(months_to_score_keys)) {
+      
+      keym <- months_to_score_keys[j] 
+      
+      ## Si la clé n'existe pas (NA) ou si la prévision n'existe pas
+      if (is.na(keym)) {
+        next
       }
+      
+      fval <- forecasts_by_date_BDF[[keym]] # La recherche va maintenant fonctionner
+      
+      if (!is.null(fval) && !is.na(fval)) {
+        pib_rows <- NULL
+        if ("dates" %in% names(df_PIB)) {
+          pib_rows <- which(lubridate::year(df_PIB$dates) == q_year & lubridate::quarter(df_PIB$dates) == q_quarter)
+        }
+        actual_gdp <- NA_real_
+        if (length(pib_rows) >= 1 && "PIB_PR" %in% names(df_PIB)) {
+          actual_gdp <- as.numeric(df_PIB$PIB_PR[pib_rows[1]])
+        } else if ("PIB_PR" %in% names(df_PIB) && length(df_PIB$PIB_PR) >= 1) {
+          middle_month <- c(2L,5L,8L,11L)[q_quarter]
+          middle_date <- as.Date(sprintf("%04d-%02d-01", q_year, middle_month))
+          middle_date <- lubridate::ceiling_date(middle_date, "month") - lubridate::days(1)
+          cand <- which(as.Date(df_PIB$dates) == middle_date)
+          if (length(cand) >= 1) actual_gdp <- as.numeric(df_PIB$PIB_PR[cand[1]])
+        }
+        
+        if (!is.na(actual_gdp)) {
+          monthly_errors[j] <- actual_gdp - as.numeric(fval)
+        }
+        ## Si actual_gdp est NA, monthly_errors[j] reste NA)
+      }
+      ## si fval est NULL ou NA, monthly_errors[j] reste NA)
     }
     
+    # Stocker les erreurs
     quarter_key <- paste0(q_year, "-Q", q_quarter)
     errors_by_quarter[[quarter_key]] <- monthly_errors
     
-    # mettre chaque erreur mensuelle dans errors BDF (associée à la bonne date)
-    for (j in seq_along(months_to_score)) {
-      fdate <- as.Date(months_to_score[j])
+    # Assigner les erreurs aux bons index dans les listes globales
+    for (j in seq_along(months_to_score_keys)) {
+      
+      fdate_key <- months_to_score_keys[j] 
+      if (is.na(fdate_key)) next ## Ne peut rien assigner si la clé n'existe pas
+      
       errval <- monthly_errors[j]
-      pos <- which(lubridate::year(dates) == lubridate::year(fdate) & lubridate::month(dates) == lubridate::month(fdate))
-      if (length(pos) == 1) errors_BDF[pos] <- errval
-      fdate_key <- as.character(fdate)
+      
+      # Assigner au vecteur 'errors_BDF' (aligné sur 'dates')
+      pos <- which(as.Date(dates) == as.Date(fdate_key))
+      if (length(pos) == 1) {
+        errors_BDF[pos] <- errval
+      }
+      
+      # Assigner à la liste 'errors_by_data_BDF' (alignée sur la date des données CSV)
       data_doc_key <- forecast_to_data_BDF[[fdate_key]]
       if (!is.null(data_doc_key) && nzchar(as.character(data_doc_key))) {
         errors_by_data_BDF[[as.character(data_doc_key)]] <- if (!is.na(errval)) as.character(errval) else NA_character_
       }
     }
+ 
   }
+  
+  # Remplir la colonne dans l'excel si période propice
+  df_temp$LLM_prev_error <- sapply(df_temp$dates, function(drow) {
+    key <- as.character(drow)
+    if (!is.null(errors_by_data_BDF[[key]])) return(as.character(errors_by_data_BDF[[key]]))
+    
+    pib_match <- which(as.Date(df_PIB$dates) == drow)
+    if (length(pib_match) >= 1) {
+      qk <- paste0(lubridate::year(df_PIB$dates[pib_match[1]]), "-Q", lubridate::quarter(df_PIB$dates[pib_match[1]]))
+      if (!is.null(errors_by_quarter[[qk]])) return(paste0(na.omit(as.character(errors_by_quarter[[qk]])), collapse = ";"))
+    }
+    NA_character_
+  })
   
   # Remplir la colonne dans l'excel si période propice
   df_temp$LLM_prev_error <- sapply(df_temp$dates, function(drow) {
@@ -467,38 +531,94 @@ for (idx in seq_along(dates)) {
     else if (mcur == 8L) { q_year <- as.integer(format(current_date, "%Y")); q_quarter <- 2L }
     else { q_year <- as.integer(format(current_date, "%Y")); q_quarter <- 3L }
     
-    months_to_score <- seq(current_date %m-% months(3), current_date %m-% months(1), by = "month")
-    monthly_errors <- numeric(length(months_to_score))
-    for (j in seq_along(months_to_score)) {
-      keym <- as.character(months_to_score[j])
-      fval <- forecasts_by_date_INSEE[[keym]]
+    #But : retrouver les dates considérées dans "dates" (key = une des dates de prévision)
+    
+    # Identifier les mois cibles
+    target_months_str <- c(
+      format(current_date %m-% months(3), "%Y-%m"), # t-3
+      format(current_date %m-% months(2), "%Y-%m"), # t-2
+      format(current_date %m-% months(1), "%Y-%m")  # t-1
+    )
+    
+    # Créer une map de recherche (ex: "2015-02" -> "2015-02-08")
+    # On utilise le vecteur 'dates' global qui contient les clés réelles
+    dates_lookup_map <- setNames(as.character(dates), format(dates, "%Y-%m"))
+    
+    # Retrouver les clés réelles (ex: "2015-02-08", "2015-03-08", "2015-04-08")
+    # S'il n'y a pas de prévision pour un mois (ex: script démarré en cours de route, la clé sera NA
+    months_to_score_keys <- unname(dates_lookup_map[target_months_str])
+    
+    #Initialiser le vecteur d'erreurs
+    monthly_errors <- rep(NA_real_, length(months_to_score_keys))
+    
+    # Calculer les erreurs en utilisant les bonnes dates
+    for (j in seq_along(months_to_score_keys)) {
+      
+      keym <- months_to_score_keys[j]  
+      
+      ## Si la clé n'existe pas (NA) ou si la prévision n'existe pas
+      if (is.na(keym)) {
+        next
+      }
+      
+      fval <- forecasts_by_date_INSEE[[keym]] # <-- MODIFIÉ POUR INSEE
+      
       if (!is.null(fval) && !is.na(fval)) {
-        pib_rows <- which(lubridate::year(df_PIB$dates) == q_year & lubridate::quarter(df_PIB$dates) == q_quarter)
+        pib_rows <- NULL
+        if ("dates" %in% names(df_PIB)) {
+          pib_rows <- which(lubridate::year(df_PIB$dates) == q_year & lubridate::quarter(df_PIB$dates) == q_quarter)
+        }
         actual_gdp <- NA_real_
-        if (length(pib_rows) >= 1 && "PIB_PR" %in% names(df_PIB)) actual_gdp <- as.numeric(df_PIB$PIB_PR[pib_rows[1]])
-        if (!is.na(actual_gdp)) monthly_errors[j] <- actual_gdp - as.numeric(fval) else monthly_errors[j] <- NA_real_
-      } else monthly_errors[j] <- NA_real_
+        if (length(pib_rows) >= 1 && "PIB_PR" %in% names(df_PIB)) {
+          actual_gdp <- as.numeric(df_PIB$PIB_PR[pib_rows[1]])
+        } else if ("PIB_PR" %in% names(df_PIB) && length(df_PIB$PIB_PR) >= 1) {
+          middle_month <- c(2L,5L,8L,11L)[q_quarter]
+          middle_date <- as.Date(sprintf("%04d-%02d-01", q_year, middle_month))
+          middle_date <- lubridate::ceiling_date(middle_date, "month") - lubridate::days(1)
+          cand <- which(as.Date(df_PIB$dates) == middle_date)
+          if (length(cand) >= 1) actual_gdp <- as.numeric(df_PIB$PIB_PR[cand[1]])
+        }
+        
+        if (!is.na(actual_gdp)) {
+          monthly_errors[j] <- actual_gdp - as.numeric(fval)
+        }
+        ## Si actual_gdp est NA, monthly_errors[j] reste NA)
+      }
+      ## si fval est NULL ou NA, monthly_errors[j] reste NA)
     }
     
+    # Stocker les erreurs
     quarter_key <- paste0(q_year, "-Q", q_quarter)
     errors_by_quarter[[quarter_key]] <- monthly_errors
     
-    for (j in seq_along(months_to_score)) {
-      fdate <- as.Date(months_to_score[j])
+    # Assigner les erreurs aux bons index dans les listes globales
+    for (j in seq_along(months_to_score_keys)) {
+      
+      fdate_key <- months_to_score_keys[j]  
+      if (is.na(fdate_key)) next ## Ne peut rien assigner si la clé n'existe pas
+      
       errval <- monthly_errors[j]
-      pos <- which(lubridate::year(dates) == lubridate::year(fdate) & lubridate::month(dates) == lubridate::month(fdate))
-      if (length(pos) == 1) errors_INSEE[pos] <- errval
-      fdate_key <- as.character(fdate)
-      data_doc_key <- forecast_to_data_INSEE[[fdate_key]]
+      
+      # Assigner au vecteur 'errors_INSEE' (aligné sur 'dates')
+      pos <- which(as.Date(dates) == as.Date(fdate_key))
+      if (length(pos) == 1) {
+        errors_INSEE[pos] <- errval # <-- MODIFIÉ POUR INSEE
+      }
+      
+      # Assigner à la liste 'errors_by_data_INSEE' (alignée sur la date des données CSV)
+      data_doc_key <- forecast_to_data_INSEE[[fdate_key]] # <-- MODIFIÉ POUR INSEE
       if (!is.null(data_doc_key) && nzchar(as.character(data_doc_key))) {
-        errors_by_data_INSEE[[as.character(data_doc_key)]] <- if (!is.na(errval)) as.character(errval) else NA_character_
+        errors_by_data_INSEE[[as.character(data_doc_key)]] <- if (!is.na(errval)) as.character(errval) else NA_character_ # <-- MODIFIÉ POUR INSEE
       }
     }
+    
   }
   
+  # Remplir la colonne dans l'excel si période propice
   df_temp$LLM_prev_error <- sapply(df_temp$dates, function(drow) {
     key <- as.character(drow)
-    if (!is.null(errors_by_data_INSEE[[key]])) return(as.character(errors_by_data_INSEE[[key]]))
+    if (!is.null(errors_by_data_INSEE[[key]])) return(as.character(errors_by_data_INSEE[[key]])) # <-- MODIFIÉ POUR INSEE
+    
     pib_match <- which(as.Date(df_PIB$dates) == drow)
     if (length(pib_match) >= 1) {
       qk <- paste0(lubridate::year(df_PIB$dates[pib_match[1]]), "-Q", lubridate::quarter(df_PIB$dates[pib_match[1]]))
@@ -526,7 +646,6 @@ for (idx in seq_along(dates)) {
   
   file_name <- paste0("date_max_INSEE_", format(current_date, "%Y%m%d"), ".csv")
   write.csv(export_df, file = file.path("indicateurs_INSEE_error", file_name), row.names = FALSE, fileEncoding = "UTF-8")
-  cat("Fichier CSV créé :", file_name, "\n")
   input_doc <- normalizePath(file.path("indicateurs_INSEE_error", file_name), winslash = "/", mustWork = TRUE)
   uploaded_doc <- google_upload(input_doc, api_key = cle_API)
   
