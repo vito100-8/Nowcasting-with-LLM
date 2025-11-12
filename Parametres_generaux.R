@@ -24,10 +24,6 @@ english <- 1 # 1 si prompt en anglais
 temp_LLM <- 0.5  # Niveau de créativité des réponses 0.3/0.7/1.5 (castro-Leibovici)
 n_repro <- 10  # Nombre de prévisions générées par date
 
-
-# Initialisation des dates
-#df_date <- as.Date(c("2012-01-03")) #POUR TESTER : à changer manuellement
-
 #Dates utilisées
 dates <- read_xlsx(here("dates_prev.xlsx")) #possible aussi de prendre df_date (dates <- df_date)
 
