@@ -59,7 +59,7 @@ if (english == 1) {
       ", giving a speech about the economic outlook of France. Today is ",
       format(d, "%d %B %Y"), ". ",
       "You will be provided with a document with information about the current state and recent past of the French economy. ",
-      "Using only the information in that document and information that was available on or before ", format(d, "%d %B %Y"),
+      "Using ONLY the information in that document and information that was available on or before ", format(d, "%d %B %Y"),
       ", provide a numeric forecast (decimal percent with sign, e.g., +0.3) for French real GDP growth in the ", current_quarter, " quarter of ", y_prev,
       " and a confidence level (integer 0–100). Output EXACTLY in this format on a single line (no extra text):\n",
       "<forecast> (<confidence>)\nExample: +0.3 (80)\n",
@@ -189,8 +189,8 @@ for (dt in as.Date(dates$`Date Prevision`)) {
 df_results_text_BDF <- do.call(rbind, results_BDF)
 
 # Enregistrement
-write.xlsx(df_results_text_BDF, file = "resultats_BDF_Gemini_text.xlsx", sheetName = 'prevision', rowNames = FALSE)
-print("Enregistré: resultats_BDF_Gemini_text.xlsx \n")
+write.xlsx(df_results_text_BDF, file = "results_BDF_text.xlsx", sheetName = 'prevision', rowNames = FALSE)
+print("Enregistré: results_BDF_text.xlsx \n")
 
 t2 <- Sys.time()
 print(diff(range(t1, t2)))
@@ -199,6 +199,9 @@ print(diff(range(t1, t2)))
 ########################
 #BOUCLE PRINCIPALE INSEE
 ########################
+
+#Création chemin d'accès
+dir.create("INSEE_Text_files_used", showWarnings = FALSE)
 
 # Forecast regex pattern qui sera appelé dans la boucle pour parse
 forecast_confidence_pattern <- "([+-]?\\d+\\.?\\d*)\\s*\\(\\s*(\\d{1,3})\\s*\\)"
@@ -219,7 +222,7 @@ for (dt in as.Date(df_date$`Date Prevision`)) {
   
   ##concaténation des documents dans le chemin d'accès spécifié
   all_insee_docs_to_combine <- c(emi_path, ser_path, bat_path)
-  combined_pdf_path <- file.path( "./INSEE_files_used/", paste0("combined_INSEE_", format(current_date, "%Y%m%d"), ".pdf"))
+  combined_pdf_path <- file.path( "./INSEE_Text_files_used/", paste0("combined_INSEE_", format(current_date, "%Y%m%d"), ".pdf"))
   INSEE_path <- merge_pdfs(all_insee_docs_to_combine, combined_pdf_path)
   
   # Chargement du pdf concaténé souhaité
@@ -285,8 +288,8 @@ df_results_text_INSEE <- do.call(rbind, results_INSEE)
 
 
 # Enregistrement
-write.xlsx(df_results_text_INSEE, file = "resultats_INSEE_Gemini_text.xlsx", sheetName = 'prevision', rowNames = FALSE)
-print("Enregistré: resultats_INSEE_Gemini_text.xlsx \n")
+write.xlsx(df_results_text_INSEE, file = "results_INSEE_text.xlsx", sheetName = 'prevision', rowNames = FALSE)
+print("Enregistré: results_INSEE_text.xlsx \n")
 
 t2 <- Sys.time()
 print(diff(range(t1, t2)))

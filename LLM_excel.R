@@ -87,7 +87,7 @@ if (english == 1) {
       ", giving a speech about the economic outlook of France. Today is ",
       format(d, "%d %B %Y"), ". ",
       "You will be provided with a document with information about the current state and recent past of the French economy. ",
-      "Using only the information in that document and information that was available on or before ", format(d, "%d %B %Y"),
+      "Using ONLY the information in that document and information that was available on or before ", format(d, "%d %B %Y"),
       ", provide a numeric forecast (decimal percent with sign, e.g., +0.3) for French real GDP growth in the ", current_quarter, " quarter of ", y_prev,
       " and a confidence level (integer 0–100). Output EXACTLY in this format on a single line (no extra text):\n",
       "<forecast> (<confidence>)\nExample: +0.3 (80)\n",
@@ -225,7 +225,7 @@ for (dt in as.Date(dates$`Date Prevision`)) {
 
 # Stockage + document résultat
 df_excel_BDF <- do.call(rbind, results_uploads_BDF)
-write.xlsx(df_excel_BDF, file = "Indicateurs_BDF/upload_summary.xlsx", overwrite = TRUE)
+write.xlsx(df_excel_BDF, file = "results_BDF_excel.xlsx", overwrite = TRUE)
 
 
 # INSEE #
@@ -317,7 +317,7 @@ for (dt in as.Date(dates$`Date Prevision`)) {
 
 # Stockage + document résultat
 df_excel_INSEE <- do.call(rbind, results_uploads_INSEE)
-write.xlsx(df_excel_INSEE, file = "Indicateurs_INSEE/upload_summary.xlsx", overwrite = TRUE)
+write.xlsx(df_excel_INSEE, file = "results_INSEE_excel.xlsx", overwrite = TRUE)
 
 
 

@@ -1,5 +1,6 @@
 #Création d'un xlsx avec toutes les dates de prévision
 
+source("Library_Nowcasting_LLM.R")
 
 #### CHARGER DATES EMC POUR LA BDF #######
 ## charger table de dates
@@ -35,7 +36,7 @@ date_prev_temp_BDF <- date_prev_temp_BDF |>
     ),
     date_finale_d = case_when(
       annee_prev >= 2015 & annee_prev <= 2019 ~ date_courte_d,
-      annee_prev >= 2020 & annee_prev <= 2024 ~ date_longue_d
+      annee_prev >= 2020 & annee_prev <= 2025 ~ date_longue_d
     )
   ) 
 
@@ -46,11 +47,6 @@ date_publi_prev<- date_prev_temp_BDF |>
 
 # on supprime les lignes où la variable date_finale_d est manquante (NA) 
 # car pas de publication de l'enquête (pandémie)
-
-#Correction d'une date d'EMC
-date_publi_prev$date_finale_d[107] <- as.Date("2024-07-10")
-
-write.xlsx(date_publi_prev, file = here("date_publi_prev.xlsx"), )
 
 
 ### Initialisation de la date à la veille de la parution de chaque EMC ##

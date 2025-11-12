@@ -55,7 +55,7 @@ if (english == 1) {
       "Forget the previous instructions and answers. You are ", boss, ", ", position, 
       ", and you are giving a speech about the economic outlook of France. Today is ",
       format(d, "%d %B %Y"), ". ",
-      "Using only information that was available on or before ", format(d, "%d %B %Y"),
+      "Using ONLY information that was available on or before ", format(d, "%d %B %Y"),
       ", provide a numeric forecast (decimal percent with sign, e.g., +0.3) for French real GDP growth in the ", current_quarter, " quarter of ", y_prev,
       " and a confidence level (integer 0–100). Output EXACTLY in this format on a single line (no extra text):\n",
       "<forecast> (<confidence>)\nExample: +0.3 (80)\n",
@@ -87,7 +87,7 @@ if (english == 1) {
       "Oubliez les instructions et les réponses précédentes. Vous êtes ", boss, ", ", position,
       ", qui prononce un discours sur les perspectives économiques de la France. Nous sommes le ",
       format(d, "%d %B %Y"), ". ",
-      "En utilisant uniquement les informations disponibles au plus tard le ", format(d, "%d %B %Y"),
+      "En utilisant UNIQUEMENT les informations disponibles au plus tard le ", format(d, "%d %B %Y"),
       ", fournissez une prévision numérique (pourcentage décimal avec signe, ex. +0.3) de la croissance du PIB réel français pour le ",
       trimestre_actuel, " trimestre ", y_prev,
       " et un niveau de confiance (entier 0-100). Renvoyez EXACTEMENT sur une seule ligne (aucun texte supplémentaire) :\n",
@@ -185,11 +185,11 @@ for (dt in as.Date(dates$`Date Prevision`)) {
   df_results_INSEE <- do.call(rbind, results_INSEE_list)
   
   # Sauvegarde des deux dataframes séparément
-  write.xlsx(df_results_BDF, file = "resultats_BDF.xlsx", sheetName = 'prevision', rowNames = FALSE)
-  cat("Les résultats pour la BDF ont été sauvegardés dans le fichier : resultats_BDF.xlsx\n")
+  write.xlsx(df_results_BDF, file = "results_BDF_noText.xlsx", sheetName = 'prevision', rowNames = FALSE)
+  cat("Les résultats pour la BDF ont été sauvegardés dans le fichier : results_BDF_noText.xlsx\n")
   
-  write.xlsx(df_results_INSEE, file = "resultats_INSEE.xlsx", sheetName = 'prevision', rowNames = FALSE)
-  cat("Les résultats pour l'INSEE ont été sauvegardés dans le fichier : resultats_INSEE.xlsx\n")
+  write.xlsx(df_results_INSEE, file = "results_INSEE_noText.xlsx", sheetName = 'prevision', rowNames = FALSE)
+  cat("Les résultats pour l'INSEE ont été sauvegardés dans le fichier : results_INSEE_noText.xlsx\n")
   
   t2 <- Sys.time()
   diff(range(t1,t2))

@@ -24,11 +24,9 @@ chat_gemini <- chat_google_gemini( system_prompt = sys_prompt,
 
 document_folder_BDF <- "docEMC_clean"
 document_folder_INSEE <- "INSEE_Scrap"
-output_folder_BDF <- "BDF_files_used"
-output_folder_INSEE <- "INSEE_files_used"
+output_folder_BDF <- "BDF_rolling_files_used"
+output_folder_INSEE <- "INSEE_rolling_files_used"
 
-#Initialisation dates
-dates <- df_date
 
 ###################################
 # Prompts 
@@ -59,9 +57,10 @@ if (english == 1) {
     
     paste0(
       "Forget the previous instructions and answers. You are ", boss, ", ", position, 
-      ", and you are giving a speech about the economic outlook of France. Today is ",
+      ", giving a speech about the economic outlook of France. Today is ",
       format(d, "%d %B %Y"), ". ",
-      "Using only information that was available on or before ", format(d, "%d %B %Y"),
+      "You will be provided with a document with information about the current state and recent past of the French economy. ",
+      "Using ONLY the information in that document and information that was available on or before ", format(d, "%d %B %Y"),
       ", provide a numeric forecast (decimal percent with sign, e.g., +0.3) for French real GDP growth in the ", current_quarter, " quarter of ", y_prev,
       " and a confidence level (integer 0–100). Output EXACTLY in this format on a single line (no extra text):\n",
       "<forecast> (<confidence>)\nExample: +0.3 (80)\n",
@@ -93,7 +92,8 @@ if (english == 1) {
       "Oubliez les instructions et les réponses précédentes. Vous êtes ", boss, ", ", position,
       ", qui prononce un discours sur les perspectives économiques de la France. Nous sommes le ",
       format(d, "%d %B %Y"), ". ",
-      "En utilisant uniquement les informations disponibles au plus tard le ", format(d, "%d %B %Y"),
+      "Vous recevrez un document concernant la situation actuelle et passée de l'économie française. ",
+      "En utilisant UNIQUEMENT les informations contenues dans ce document et celles disponibles au plus tard le ", format(d, "%d %B %Y"),
       ", fournissez une prévision numérique (pourcentage décimal avec signe, ex. +0.3) de la croissance du PIB réel français pour le ",
       trimestre_actuel, " trimestre ", y_prev,
       " et un niveau de confiance (entier 0-100). Renvoyez EXACTEMENT sur une seule ligne (aucun texte supplémentaire) :\n",
@@ -107,7 +107,6 @@ if (english == 1) {
 # Boucle principale
 #####################
 
-
 forecast_confidence_pattern <- "([+-]?\\d+\\.?\\d*)\\s*\\(\\s*(\\d{1,3})\\s*\\)"
 results_BDF <- list()
 results_INSEE <- list()
@@ -118,8 +117,8 @@ for (dt in as.Date(dates$`Date Prevision`)) {
   current_date <- as.Date(dt)
   
   #sécurité 
-  if (!dir.exists(output_folder_BDF)) dir.create(output_folder_BDF, recursive = TRUE)
-  if (!dir.exists(output_folder_INSEE)) dir.create(output_folder_INSEE, recursive = TRUE)
+  if (!dir.exists(output_folder_BDF)) dir.create(output_folder_BDF, recursive = TRUE, showWarnings = FALSE)
+  if (!dir.exists(output_folder_INSEE)) dir.create(output_folder_INSEE, recursive = TRUE, showWarnings = FALSE)
   
   # identification du trimestre et du rang dans le trimestre
   m <- month(current_date)
@@ -250,11 +249,11 @@ for (dt in as.Date(dates$`Date Prevision`)) {
   }
 }
 
-# --- Sauvegarde
+# Sauvegarde
 df_results_rolling_text_BDF <- do.call(rbind, results_BDF)
 df_results_rolling_text_INSEE <- do.call(rbind, results_INSEE)
-write.xlsx(df_results_rolling_text_BDF, "resultats_BDF_Gemini_rolling_text.xlsx")
-write.xlsx(df_results_rolling_text_INSEE, "resultats_INSEE_Gemini_rolling_text.xlsx")
+write.xlsx(df_results_rolling_text_BDF, "results_BDF_rolling_text.xlsx")
+write.xlsx(df_results_rolling_text_INSEE, "results_INSEE_rolling_text.xlsx")
 
 t2 <- Sys.time()
 print(diff(range(t1, t2)))

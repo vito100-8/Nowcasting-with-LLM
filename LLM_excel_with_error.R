@@ -1,13 +1,9 @@
 #INSERTION D'UN EXCEL ITERATIF AVEC ERREUR DU LLM SELON LA PERIODE DE PREVISION AU LLM#
 
-
-#INSERTION D'UN EXCEL ITERATIF AVEC ERREUR DU LLM SELON LA PERIODE DE PREVISION AU LLM#
-
-
 rm(list = ls())
 source("Library_Nowcasting_LLM.R")
 source("LLM_functions.R")
-#source("Script_dates_prev.R")
+source("Script_dates_prev.R")
 source("Parametres_generaux.R")
 
 #######################
@@ -37,12 +33,7 @@ df_PIB<- read_xlsx("Data_BDF_INSEE.xlsx", sheet = "trimestriel")
 df_enq_BDF <- read_xlsx("Data_BDF_INSEE.xlsx", sheet = "ENQ_BDF")
 df_enq_INSEE <- read_xlsx("Data_BDF_INSEE.xlsx", sheet = "ENQ_INSEE")
 
-#Dates
-# dates <- df_date
-dates <- as.Date(c("2015-02-08", "2015-03-08", "2015-04-08", "2015-05-08", "2015-06-08", "2015-07-08",
-                   "2015-08-08")) #pour tester
-#Bien transformer les dates en un vecteur
-dates <- if (is.data.frame(dates)) as.Date(dates[[1]]) else as.Date(dates)
+
 
 # Variables contenant les futures erreurs de prévision
 errors_BDF <- rep(NA_real_, length(dates))
@@ -133,7 +124,7 @@ if (english == 1) {
       ", giving a speech about the economic outlook of France. Today is ",
       format(d, "%d %B %Y"), ". ",
       "You will be provided with a document with information about the current state and recent past of the French economy. ",
-      "Using only the information in that document and information that was available on or before ", format(d, "%d %B %Y"),
+      "Using ONLY the information in that document and information that was available on or before ", format(d, "%d %B %Y"),
       ", provide a numeric forecast (decimal percent with sign, e.g., +0.3) for French real GDP growth in the ", current_quarter, " quarter of ", y_prev,
       " and a confidence level (integer 0–100). Output EXACTLY in this format on a single line (no extra text):\n",
       "<forecast> (<confidence>)\nExample: +0.3 (80)\n",
@@ -432,7 +423,7 @@ for (idx in seq_along(dates)) {
 
 # création excel de résultats
 df_excel_BDF <- do.call(rbind, results_uploads_BDF)
-write.xlsx(df_excel_BDF, file = "indicateurs_BDF_error/upload_summary.xlsx", overwrite = TRUE)
+write.xlsx(df_excel_BDF, file = "results_BDF_excel_error.xlsx", overwrite = TRUE)
 
 
 
@@ -664,6 +655,6 @@ for (idx in seq_along(dates)) {
 
 # création excel de résultats
 df_excel_INSEE <- do.call(rbind, results_uploads_INSEE)
-write.xlsx(df_excel_INSEE, file = "indicateurs_INSEE_error/upload_summary.xlsx", overwrite = TRUE)
+write.xlsx(df_excel_INSEE, file = "results_INSEE_excel_error.xlsx", overwrite = TRUE)
 
 

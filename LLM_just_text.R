@@ -61,10 +61,10 @@ if (english == 1) {
       ", giving a speech about the economic outlook of France. Today is ",
       format(d, "%d %B %Y"), ". ",
       "You will be provided with a document with information about the current state and recent past of the French economy. ",
-      "Using only the information in that document provide a numeric forecast (decimal percent with sign, e.g., +0.3) for French real GDP growth in the ", current_quarter, " quarter of ", y_prev,
+      "Using ONLY the information in that document and your reasoning skills and no external prior knowledge, provide a numeric forecast (decimal percent with sign, e.g., +0.3) for French real GDP growth in the ", current_quarter, " quarter of ", y_prev,
       " and a confidence level (integer 0–100). Output EXACTLY in this format on a single line (no extra text):\n",
       "<forecast> (<confidence>)\nExample: +0.3 (80)\n",
-      "Do NOT use any other information."
+      "Do NOT use any other information published after 11 May 2015."
     )
   }
   
@@ -93,11 +93,11 @@ if (english == 1) {
       ", qui prononce un discours sur les perspectives économiques de la France. Nous sommes le ",
       format(d, "%d %B %Y"), ". ",
       "Vous recevrez un document concernant la situation actuelle et passée de l'économie française. ",
-      "En utilisant UNIQUEMENT les informations contenues dans ce document, fournissez une prévision numérique (pourcentage décimal avec signe, ex. +0.3) de la croissance du PIB réel français pour le ",
+      "En utilisant UNIQUEMENT les informations contenues dans ce document et votre raisonnement sans recourir à des connaissances externes ou préalables, fournissez une prévision numérique (pourcentage décimal avec signe, ex. +0.3) de la croissance du PIB réel français pour le ",
       trimestre_actuel, " trimestre ", y_prev,
       " et un niveau de confiance (entier 0-100). Renvoyez EXACTEMENT sur une seule ligne (aucun texte supplémentaire) :\n",
       "<prévision> (<confiance>)\nExemple : +0.3 (80)\n",
-      "N'utilisez AUCUNE information."
+      "N'utilisez AUCUNE information publiée après le 11 mai 2015."
     )
   }
 }
@@ -183,12 +183,17 @@ for (dt in as.Date(dates$`Date Prevision`)) {
   Sys.sleep(0.5)
 }
 
-# réunir les prévisions pour chaque date
-df_results_just_text_BDF <- do.call(rbind, results_BDF)
+# réunir les prévisions pour chaque date, prévoir une erreur
+if (length(results_BDF) > 0 ) {
+  df_results_just_text_BDF <- do.call(rbind, results_BDF)
+}else{
+  warning("La liste de résultats BDF est vide.")
+}
+
 
 # Enregistrement
-write.xlsx(df_results_just_text_BDF, file = "resultats_BDF_Gemini_just_text.xlsx", sheetName = 'prevision', rowNames = FALSE)
-print("Enregistré: resultats_BDF_Gemini_just_text.xlsx \n")
+write.xlsx(df_results_just_text_BDF, file = "results_BDF_just_text.xlsx", sheetName = 'prevision', rowNames = FALSE)
+print("Enregistré: results_BDF_just_text.xlsx \n")
 
 t2 <- Sys.time()
 print(diff(range(t1, t2)))
@@ -199,6 +204,8 @@ print(diff(range(t1, t2)))
 ########################
 
 
+#Création chemin d'accès
+dir.create("INSEE_justText_files_used", showWarnings = FALSE)
 
 # Creation de la list contenant les résultats
 results_INSEE <- list()
@@ -216,7 +223,7 @@ for (dt in as.Date(df_date$`Date Prevision`)) {
   
   ##concaténation des documents dans le chemin d'accès spécifié
   all_insee_docs_to_combine <- c(emi_path, ser_path, bat_path)
-  combined_pdf_path <- file.path( "./INSEE_files_used/", paste0("combined_INSEE_", format(current_date, "%Y%m%d"), ".pdf"))
+  combined_pdf_path <- file.path( "./INSEE_justText_files_used/", paste0("combined_INSEE_", format(current_date, "%Y%m%d"), ".pdf"))
   INSEE_path <- merge_pdfs(all_insee_docs_to_combine, combined_pdf_path)
   
   # Chargement du pdf concaténé souhaité
@@ -277,13 +284,22 @@ for (dt in as.Date(df_date$`Date Prevision`)) {
   Sys.sleep(0.5)
 }
 
-# réunir les prévisions pour chaque date
-df_results_just_text_INSEE <- do.call(rbind, results_INSEE)
+# réunir les prévisions pour chaque date, prévoir une erreur
+if (length(results_INSEE) > 0 ) {
+  df_results_just_text_INSEE <- do.call(rbind, results_INSEE)
+  erreur <- 0
+}else{
+  warning("La liste de résultats INSEE est vide.")
+  erreur <- 1
+  }
 
 
 # Enregistrement
-write.xlsx(df_results_just_text_INSEE, file = "resultats_INSEE_Gemini_just_text.xlsx", sheetName = 'prevision', rowNames = FALSE)
-print("Enregistré: resultats_INSEE_Gemini_just_text.xlsx \n")
+if (erreur == 0){
+  write.xlsx(df_results_just_text_INSEE, file = "results_INSEE_just_text.xlsx", sheetName = 'prevision', rowNames = FALSE)
+  print("Enregistré: results_INSEE_just_text.xlsx \n")
+}
+
 
 t2 <- Sys.time()
 print(diff(range(t1, t2)))

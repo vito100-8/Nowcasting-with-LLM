@@ -11,6 +11,9 @@ source("Parametres_generaux.R")
 #Paramètres spécifiques
 #######################
 
+#dates spéciales : commencer en 2016 pour que BDF aie accès à 12 fichiers
+dates_12 <- dates |>
+  filter(`Date Prevision`> "2016-01-12")
 
 #Systeme prompt
 sys_prompt <- system_prompt("Text")
@@ -59,7 +62,7 @@ if (english == 1) {
       ", giving a speech about the economic outlook of France. Today is ",
       format(d, "%d %B %Y"), ". ",
       "You will be provided with a document with information about the current state and recent past of the French economy. ",
-      "Using only the information in that document and information that was available on or before ", format(d, "%d %B %Y"),
+      "Using ONLY the information in that document and information that was available on or before ", format(d, "%d %B %Y"),
       ", provide a numeric forecast (decimal percent with sign, e.g., +0.3) for French real GDP growth in the ", current_quarter, " quarter of ", y_prev,
       " and a confidence level (integer 0–100). Output EXACTLY in this format on a single line (no extra text):\n",
       "<forecast> (<confidence>)\nExample: +0.3 (80)\n",
@@ -107,6 +110,8 @@ if (english == 1) {
 # Boucle principale BDF
 ###################################
 
+
+
 #Création chemin d'accès
 dir.create("./BDF_files_used_12", showWarnings = FALSE, recursive = TRUE)
 
@@ -119,7 +124,7 @@ results_BDF <- list()
 row_id_BDF <- 1 
 
 t1 <- Sys.time()
-for (dt in as.Date(dates$`Date Prevision`)) {
+for (dt in as.Date(dates_12$`Date Prevision`)) {
   current_date <- as.Date(dt) 
   
   # Récupérer les 12 derniers documents
@@ -197,8 +202,8 @@ for (dt in as.Date(dates$`Date Prevision`)) {
 df_results_text_12_BDF <- do.call(rbind, results_BDF)
 
 # Enregistrement
-write.xlsx(df_results_text_12_BDF, file = "resultats_BDF_Gemini_text_12.xlsx", sheetName = 'prevision', rowNames = FALSE)
-print("Enregistré: resultats_BDF_Gemini_text_12.xlsx \n")
+write.xlsx(df_results_text_12_BDF, file = "results_BDF_text_12.xlsx", sheetName = 'prevision', rowNames = FALSE)
+print("Enregistré: results_BDF_text_12.xlsx \n")
 
 t2 <- Sys.time()
 print(diff(range(t1, t2)))
@@ -220,7 +225,7 @@ row_id_INSEE <- 1
 
 t1 <- Sys.time()
 
-for (dt in as.Date(dates$`Date Prevision`)) {
+for (dt in as.Date(dates_12$`Date Prevision`)) {
   current_date <- as.Date(dt)
   
   all_insee_docs_to_combine <- c(
@@ -295,8 +300,8 @@ df_results_text_12_INSEE <- do.call(rbind, results_INSEE)
 
 
 # Enregistrement
-write.xlsx(df_results_text_12_INSEE, file = "resultats_INSEE_Gemini_text_12.xlsx", sheetName = 'prevision', rowNames = FALSE)
-print("Enregistré: resultats_INSEE_Gemini_text_12.xlsx \n")
+write.xlsx(df_results_text_12_INSEE, file = "results_INSEE_text_12.xlsx", sheetName = 'prevision', rowNames = FALSE)
+print("Enregistré: results_INSEE_text_12.xlsx \n")
 
 t2 <- Sys.time()
 print(diff(range(t1, t2)))
