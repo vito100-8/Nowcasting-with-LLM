@@ -34,6 +34,10 @@ df_PIB <- read_xlsx("Data_BDF_INSEE.xlsx", sheet = "trimestriel")
 df_enq_BDF <- read.xlsx("Data_BDF_INSEE.xlsx", sheet = "ENQ_BDF")
 df_enq_INSEE <- read_xlsx("Data_BDF_INSEE.xlsx", sheet = "ENQ_INSEE")
 
+#Nettoyage de df_enq_BDF
+
+df_enq_BDF$dates[429] <- as.Date("2025-09-30")
+df_enq_BDF$dates[430] <- as.Date("2025-10-31")
 
 
 #Nettoyage de df_enq_INSEE
