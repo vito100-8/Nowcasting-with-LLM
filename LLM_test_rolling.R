@@ -190,7 +190,6 @@ for (dt in as.Date(dates$`Date Prevision`)) {
         
         chat_gemini_worker$chat(uploaded_bdf, prompt_bdf)
       }, error = \(e) {
-        # C'est une bonne pratique de retourner l'erreur plutôt que juste NA
         return(paste0("Erreur dans le worker: ", as.character(e)))
       })
       
@@ -285,7 +284,5 @@ write.xlsx(df_results_rolling_text_INSEE, "Results/INSEE_rolling_text.xlsx")
 
 t2 <- Sys.time()
 print(diff(range(t1, t2)))
-
-
 
 
