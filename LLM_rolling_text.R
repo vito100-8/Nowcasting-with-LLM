@@ -250,8 +250,8 @@ for (dt in as.Date(dates$`Date Prevision`)) {
 }
 
 # Sauvegarde
-df_results_rolling_text_BDF <- do.call(rbind, results_BDF)
-df_results_rolling_text_INSEE <- do.call(rbind, results_INSEE)
+df_results_rolling_text_BDF <- bind_rows(results_BDF)
+df_results_rolling_text_INSEE <-  bind_rows(results_INSEE)
 write.xlsx(df_results_rolling_text_BDF, "Results/BDF_rolling_text.xlsx")
 write.xlsx(df_results_rolling_text_INSEE, "Results/INSEE_rolling_text.xlsx")
 
