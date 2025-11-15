@@ -6,6 +6,7 @@ source("Library_Nowcasting_LLM.R")
 source("LLM_functions.R")
 source("Script_dates_prev.R")
 source("Parametres_generaux.R")
+dates <- dates2  # avec la pandémie
 
 #######################################
 #Initialisation paramètres spécifiques
