@@ -75,6 +75,27 @@ write.xlsx(df_final_INSEE, file = "Final_Results/INSEE_excel_2020.xlsx",
            sheetName = 'prevision', rowNames = FALSE)  #4
 
 
+# =============================================
+# Correction BDF_all_text et INSEE_all_text
+df_BDF <- read_excel('Results/BDF_all.xlsx')   #1
+df_INSEE <- read_excel('Results/INSEE_all.xlsx')   #2
+
+# remplace les dates communes de 2020 et ajoute les dates manquantes
+df_final_BDF <- df_BDF %>%
+  rows_upsert(df_BDF_2020, by = "Date") %>%
+  arrange(Date)
+
+df_final_INSEE <- df_INSEE %>%
+  rows_upsert(df_INSEE_2020, by = "Date") %>%
+  arrange(Date)
+
+write.xlsx(df_final_BDF, file = "Final_Results/BDF_all_2020.xlsx", 
+           sheetName = 'prevision', rowNames = FALSE)  #3
+
+write.xlsx(df_final_INSEE, file = "Final_Results/INSEE_all_2020.xlsx", 
+           sheetName = 'prevision', rowNames = FALSE)  #4
+
+
 
 # FICHIER VICTOR => format date différents
 
