@@ -157,8 +157,8 @@ df_INSEE <- read_excel('Results/INSEE_rolling_text.xlsx')   #2
 # ETAPE 1 : on remplace tout par _no_tex
   df_BDF_2020 <- read_excel('Results/BDF_noText2.xlsx')
   df_INSEE_2020 <- read_excel('Results/INSEE_noText2.xlsx')
-  df_BDF_2020 <- subset(df_BDF_2020,Date>"2020-01-09")
-  df_INSEE_2020 <- subset(df_INSEE_2020,Date>"2020-01-09")
+  df_BDF_2020 <- subset(df_BDF_2020,Date>"2020-01-09"&Date<"2020-12-13"|Date=="2021-01-12")
+  df_INSEE_2020 <- subset(df_INSEE_2020,Date>"2020-01-09"&Date<"2020-12-13"|Date=="2021-01-12")
   
   # Pb type de date différent
   df_BDF_2020$Date <- as.POSIXct(df_BDF_2020$Date, tz = "UTC")
@@ -175,8 +175,13 @@ df_INSEE <- read_excel('Results/INSEE_rolling_text.xlsx')   #2
 
   
 # ETAPE 2 : on affine en remplaçant les 4 dates avec EMC par _text
-  df_BDF_2020bis <- read_excel('Results/BDF_Text_avecEMC.xlsx')
-  df_INSEE_2020bis <- read_excel('Results/INSEE_Text_avecEMC.xlsx')
+#  df_BDF_2020bis <- read_excel('Results/BDF_Text_avecEMC.xlsx')
+#  df_INSEE_2020bis <- read_excel('Results/INSEE_Text_avecEMC.xlsx')
+  
+  df_BDF_2020bis <- read_excel('Results/BDF_Text.xlsx')
+  df_BDF_2020bis <- subset(df_BDF_2020bis,Date=="2020-08-09"|Date=="2020-10-07"|Date=="2020-11-08")
+  df_INSEE_2020bis <- read_excel('Results/INSEE_Text.xlsx')
+  df_INSEE_2020bis <- subset(df_INSEE_2020bis,Date=="2020-08-09"|Date=="2020-10-07"|Date=="2020-11-08")
 
     # Pb type de date différent
   df_BDF_2020bis$Date <- as.POSIXct(df_BDF_2020bis$Date, tz = "UTC")
