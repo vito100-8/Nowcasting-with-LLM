@@ -58,18 +58,30 @@ analyze_cutoff_accuracy <- function(file_path, model_name, pib_data, cutoff_date
   
   # Erreur absolue
   df_errors <- df_joined |>
+    filter(!is.na(PIB_PR)) |>
     mutate(
       Abs_Error = abs(PIB_PR - median_f),
       Period = ifelse(Date.x < cutoff_date, "Pre-Cutoff", "Post-Cutoff")
     )
   
+ 
   #Stats
   n_pre <- sum(df_errors$Period == "Pre-Cutoff", na.rm = TRUE)
   n_post <- sum(df_errors$Period == "Post-Cutoff", na.rm = TRUE)
   
+  
+  
   # Initialisation des variables 
   p_val <- NA
   
+  
+  # Test (si assez de données)
+  if(n_pre > 1 & n_post > 1) {
+    try({
+      test_res <- t.test(Abs_Error ~ Period, data = df_errors, var.equal = FALSE)
+      p_val <- test_res$p.value
+    }, silent = TRUE)
+  }
   
   #Stats
   summary_stats <- df_errors |>
@@ -134,5 +146,4 @@ for(model in names(files_list)) {
 
 # Tableau final
 final_cutoff_analysis <- bind_rows(results_list)
-
 
