@@ -89,6 +89,14 @@ file_pairs <- list(
     initial = "Results/BDF_just_text.xlsx",
     v2020 = "Final_results/BDF_just_text_2020.xlsx"
     ),
+  "BDF_excel" = list(
+    initial = "Results/BDF_excel.xlsx",
+    v2020 = "Final_results/BDF_excel_2020.xlsx"
+  ),
+  "BDF_excel_error" = list(
+    initial = "Results/BDF_excel_error.xlsx",
+    v2020 = "Final_results/BDF_excel_error_2020.xlsx"
+  ),
 
   
   # Modèles INSEE
@@ -111,6 +119,14 @@ file_pairs <- list(
   "INSEE_just_Text" = list(
     initial = "Results/INSEE_just_text.xlsx",
     v2020 = "Final_results/INSEE_just_Text_2020.xlsx"
+  ),
+  "INSEE_excel" = list(
+    initial = "Results/INSEE_excel.xlsx",
+    v2020 = "Final_results/INSEE_excel_2020.xlsx"
+  ),
+  "INSEE_excel_error" = list(
+    initial = "Results/INSEE_excel_error.xlsx",
+    v2020 = "Final_results/INSEE_excel_error_2020.xlsx"
   )
 
 )
