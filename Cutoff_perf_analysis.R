@@ -10,7 +10,7 @@ source("Library_Nowcasting_LLM.R")
 
 cutoff <- as.Date("2025-01-01") # à modifier si évolution
 
-COVID <- 0 # 0 = on ne prend pas la période covid 1 = on la considère
+COVID <- 0 # 0 = on ne prend pas la période covid;  1 = si
 
 ################################################
 # PRÉPARATION DES DONNÉES DE PIB
@@ -169,7 +169,7 @@ cutoff_1 <- as.Date("2020-01-01")
 
 
 ####################################
-#Fonction analyse cutoff
+#Fonction analyse période
 ###########################
 analyze_period_accuracy <- function(file_path, model_name, pib_data, cutoff_date) {
   

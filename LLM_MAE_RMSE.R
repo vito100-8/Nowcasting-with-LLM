@@ -6,14 +6,13 @@ source("LLM_functions.R")
 source("Script_dates_prev.R")
 source("Parametres_generaux.R")
 
-
 ################################################
 # PRÉPARATION DES DONNÉES DE PIB
 ################################################
 
 df_PIB <- read_xlsx("Data_BDF_INSEE.xlsx", sheet = "trimestriel")
 
-# Nettoyage du PIB 
+# Nettoyage du PIB (La cible reste complète pour la jointure)
 pib <- df_PIB |>
   mutate(Date = as.Date(dates), 
          forecast_year = year(Date), 
@@ -25,6 +24,25 @@ pib <- df_PIB |>
            Month == 11 ~ 4
          )
   )
+
+################################################
+# PARAMÈTRES GÉNÉRAUX
+################################################
+
+# DUMMY COVID
+# 0 : Supprimer la période Covid (2020-01-01 à 2021-01-31, basé sur la date de prévision mensuelle)
+# 1 : Conserver la période Covid
+covid <- 0
+
+# Fonction pour enelever obs covid
+filter_covid_dates <- function(df, dummy) {
+  if (dummy == 0) {
+    df |> 
+      filter(!(Date >= as.Date("2020-01-01") & Date <= as.Date("2021-01-31")))
+  } else {
+    df
+  }
+}
 
 ################################################
 # CALCUL MAE/RMSE PAR MODÈLE 
@@ -39,6 +57,7 @@ pib <- df_PIB |>
 df_BDF_text <- read_xlsx("Final_results/BDF_text_2020.xlsx") 
 
 df_BDF_text_long <- df_BDF_text |>
+  filter_covid_dates(covid) |>
   rowwise() |>
   mutate(Date = Date,
          median_forecast = median(c_across(starts_with("forecast_")), na.rm = TRUE),
@@ -87,6 +106,7 @@ metrics_BDF_text <- BDF_text_forecast |>
 df_BDF_noText <- read_xlsx("Final_results/BDF_noText_2020.xlsx") 
 
 df_BDF_noText_long <- df_BDF_noText |>
+  filter_covid_dates(covid) |> 
   rowwise() |>
   mutate(Date = Date,
          median_forecast = median(c_across(starts_with("forecast_")), na.rm = TRUE),
@@ -135,6 +155,7 @@ metrics_BDF_noText <- BDF_noText_forecast |>
 df_BDF_rolling_text <- read_xlsx("Final_results/BDF_rolling_text_2020.xlsx") 
 
 df_BDF_rolling_text_long <- df_BDF_rolling_text |>
+  filter_covid_dates(covid) |> 
   rowwise() |>
   mutate(Date = Date,
          median_forecast = median(c_across(starts_with("forecast_")), na.rm = TRUE),
@@ -183,6 +204,7 @@ metrics_BDF_rolling_text <- BDF_rolling_text_forecast |>
 df_BDF_just_text <- read_xlsx("Final_results/BDF_just_text_2020.xlsx") 
 
 df_BDF_just_text_long <- df_BDF_just_text |>
+  filter_covid_dates(covid) |> 
   rowwise() |>
   mutate(Date = Date,
          median_forecast = median(c_across(starts_with("forecast_")), na.rm = TRUE),
@@ -231,6 +253,7 @@ metrics_BDF_just_text <- BDF_just_text_forecast |>
 df_BDF_all <- read_xlsx("Final_results/BDF_all_2020.xlsx") 
 
 df_BDF_all_long <- df_BDF_all |>
+  filter_covid_dates(covid) |> 
   rowwise() |>
   mutate(Date = Date,
          median_forecast = median(c_across(starts_with("forecast_")), na.rm = TRUE),
@@ -278,6 +301,7 @@ metrics_BDF_all <- BDF_all_forecast |>
 df_BDF_excel <- read_xlsx("Final_results/BDF_excel_2020.xlsx") 
 
 df_BDF_excel_long <- df_BDF_excel |>
+  filter_covid_dates(covid) |> 
   rowwise() |>
   mutate(Date = Date,
          median_forecast = median(c_across(starts_with("forecast_")), na.rm = TRUE),
@@ -326,6 +350,7 @@ metrics_BDF_excel <- BDF_excel_forecast |>
 df_BDF_excel_error <- read_xlsx("Final_results/BDF_excel_error_2020.xlsx") 
 
 df_BDF_excel_error_long <- df_BDF_excel_error |>
+  filter_covid_dates(covid) |> 
   rowwise() |>
   mutate(Date = Date,
          median_forecast = median(c_across(starts_with("forecast_")), na.rm = TRUE),
@@ -377,6 +402,7 @@ metrics_BDF_excel_error <- BDF_excel_error_forecast |>
 df_INSEE_text <- read_xlsx("Final_results/INSEE_text_2020.xlsx") 
 
 df_INSEE_text_long <- df_INSEE_text |>
+  filter_covid_dates(covid) |> 
   rowwise() |>
   mutate(Date = Date,
          median_forecast = median(c_across(starts_with("forecast_")), na.rm = TRUE),
@@ -425,6 +451,7 @@ metrics_INSEE_text <- INSEE_text_forecast |>
 df_INSEE_noText <- read_xlsx("Final_results/INSEE_noText_2020.xlsx") 
 
 df_INSEE_noText_long <- df_INSEE_noText |>
+  filter_covid_dates(covid) |> 
   rowwise() |>
   mutate(Date = Date,
          median_forecast = median(c_across(starts_with("forecast_")), na.rm = TRUE),
@@ -473,6 +500,7 @@ metrics_INSEE_noText <- INSEE_noText_forecast |>
 df_INSEE_rolling_text <- read_xlsx("Final_results/INSEE_rolling_text_2020.xlsx") 
 
 df_INSEE_rolling_text_long <- df_INSEE_rolling_text |>
+  filter_covid_dates(covid) |> 
   rowwise() |>
   mutate(Date = Date,
          median_forecast = median(c_across(starts_with("forecast_")), na.rm = TRUE),
@@ -521,6 +549,7 @@ metrics_INSEE_rolling_text <- INSEE_rolling_text_forecast |>
 df_INSEE_just_text <- read_xlsx("Final_results/INSEE_just_text_2020.xlsx") 
 
 df_INSEE_just_text_long <- df_INSEE_just_text |>
+  filter_covid_dates(covid) |> 
   rowwise() |>
   mutate(Date = Date,
          median_forecast = median(c_across(starts_with("forecast_")), na.rm = TRUE),
@@ -569,6 +598,7 @@ metrics_INSEE_just_text <- INSEE_just_text_forecast |>
 df_INSEE_all <- read_xlsx("Final_results/INSEE_all_2020.xlsx") 
 
 df_INSEE_all_long <- df_INSEE_all |>
+  filter_covid_dates(covid) |> 
   rowwise() |>
   mutate(Date = Date,
          median_forecast = median(c_across(starts_with("forecast_")), na.rm = TRUE),
@@ -618,6 +648,7 @@ metrics_INSEE_all <- INSEE_all_forecast |>
 df_INSEE_excel <- read_xlsx("Final_results/INSEE_excel_2020.xlsx") 
 
 df_INSEE_excel_long <- df_INSEE_excel |>
+  filter_covid_dates(covid) |> 
   rowwise() |>
   mutate(Date = Date,
          median_forecast = median(c_across(starts_with("forecast_")), na.rm = TRUE),
@@ -667,6 +698,7 @@ metrics_INSEE_excel <- INSEE_excel_forecast |>
 df_INSEE_excel_error <- read_xlsx("Final_results/INSEE_excel_error_2020.xlsx") 
 
 df_INSEE_excel_error_long <- df_INSEE_excel_error |>
+  filter_covid_dates(covid) |> 
   rowwise() |>
   mutate(Date = Date,
          median_forecast = median(c_across(starts_with("forecast_")), na.rm = TRUE),
@@ -714,8 +746,6 @@ metrics_INSEE_excel_error <- INSEE_excel_error_forecast |>
 ################################################
 
 metrics_recap_final <- bind_rows(
-  metrics_BDF_text, metrics_BDF_noText, metrics_BDF_rolling_text, metrics_BDF_just_text,  metrics_BDF_all,metrics_BDF_excel, metrics_BDF_excel_error,
-  metrics_INSEE_text, metrics_INSEE_noText, metrics_INSEE_rolling_text, metrics_INSEE_just_text,  metrics_INSEE_all, metrics_INSEE_excel, metrics_INSEE_excel_error,
+  metrics_BDF_text, metrics_BDF_noText, metrics_BDF_rolling_text, metrics_BDF_just_text, metrics_BDF_all,metrics_BDF_excel, metrics_BDF_excel_error,
+  metrics_INSEE_text, metrics_INSEE_noText, metrics_INSEE_rolling_text, metrics_INSEE_just_text, metrics_INSEE_all, metrics_INSEE_excel, metrics_INSEE_excel_error
 )
-
-
