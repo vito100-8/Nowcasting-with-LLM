@@ -10,7 +10,7 @@ source("Library_Nowcasting_LLM.R")
 
 cutoff <- as.Date("2025-01-01") # à modifier si évolution
 
-COVID <- 0 # 0 = on ne prend pas la période covid;  1 = si
+COVID <- 1 # 0 = on ne prend pas la période covid;  1 = si
 
 ################################################
 # PRÉPARATION DES DONNÉES DE PIB
@@ -67,7 +67,8 @@ analyze_cutoff_accuracy <- function(file_path, model_name, pib_data, cutoff_date
   df_errors <- df_joined |>
     filter(!is.na(PIB_PR)) |>
     mutate(
-      Abs_Error = abs(PIB_PR - median_f),
+      Error = PIB_PR - median_f,
+      Abs_Error = abs(Error),
       Period = ifelse(Date.x < cutoff_date, "Pre-Cutoff", "Post-Cutoff")
     )
   
@@ -95,7 +96,7 @@ analyze_cutoff_accuracy <- function(file_path, model_name, pib_data, cutoff_date
     group_by(Period) |>
     summarise(
       MAE = mean(Abs_Error, na.rm = TRUE),
-      RMSE = sqrt(mean(Abs_Error^2, na.rm = TRUE)),
+      RMSE = sqrt(mean(Error^2, na.rm = TRUE)),
       N_Obs = n(),
       .groups = "drop"
     ) |>
@@ -154,13 +155,13 @@ for(model in names(files_list)) {
 # Tableau final
 final_cutoff_analysis <- bind_rows(results_list)
 
+write.xlsx(final_cutoff_analysis, "Analysis_cutoff.xlsx")
 
 
 
-
-###################
+######################################################################
 # Split periods
-#####################
+####################################################################
 
 
 #2 périodes de 5 ans
@@ -204,7 +205,8 @@ analyze_period_accuracy <- function(file_path, model_name, pib_data, cutoff_date
   df_errors <- df_joined |>
     filter(!is.na(PIB_PR)) |>
     mutate(
-      Abs_Error = abs(PIB_PR - median_f),
+      Errors = PIB_PR - median_f,
+      Abs_Error = abs(Errors),
       Period = ifelse(Date.x < cutoff_1, "Period1", "Period2")
     )
   
@@ -232,7 +234,7 @@ analyze_period_accuracy <- function(file_path, model_name, pib_data, cutoff_date
     group_by(Period) |>
     summarise(
       MAE = mean(Abs_Error, na.rm = TRUE),
-      RMSE = sqrt(mean(Abs_Error^2, na.rm = TRUE)),
+      RMSE = sqrt(mean(Errors^2, na.rm = TRUE)),
       N_Obs = n(),
       .groups = "drop"
     ) |>
@@ -291,6 +293,7 @@ for(model in names(files_list)) {
 # Tableau final
 final_period_analysis <- bind_rows(results_list)
 
+write.xlsx(final_period_analysis, "Analysis_Period.xlsx")
 
 #############################
 #Period analysis monthly
@@ -338,7 +341,7 @@ analyze_period_monthly_accuracy <- function(file_path, model_name, pib_data, dum
     filter(!is.na(PIB_PR)) |>
     mutate(
       Abs_Error = abs(PIB_PR - median_f),
-      Abs_Error_Squared = Abs_Error^2,
+      Error_Squared = (PIB_PR - median_f)^2,
       Period_Group = case_when(
         Date.x <= cutoff_periode ~ "2015_2019",
         Date.x > cutoff_periode ~ "2020_2025"
@@ -349,7 +352,7 @@ analyze_period_monthly_accuracy <- function(file_path, model_name, pib_data, dum
     group_by(Period_Group, month_in_quarter) |> 
     summarise(
       MAE = mean(Abs_Error, na.rm = TRUE),
-      RMSE = sqrt(mean(Abs_Error_Squared, na.rm = TRUE)),
+      RMSE = sqrt(mean(Error_Squared, na.rm = TRUE)),
       .groups = "drop"
     )
   
@@ -411,10 +414,7 @@ for(model in names(files_list)) {
 # Tableau final
 final_period_monthly_analysis <- bind_rows(results_list)
 
-### Pour export
+write.xlsx(final_period_monthly_analysis, "Analysis_monthy_period.xlsx")
 
-library(gridExtra)
 
-png("Recap_Final.png", height = 30*nrow(final_period_analysis), width = 800); grid.table(final_period_analysis); dev.off()
 
-png("Analyse_Cutoff.png", height = 30*nrow(final_cutoff_analysis), width = 1000); grid.table(final_cutoff_analysis); dev.off()
