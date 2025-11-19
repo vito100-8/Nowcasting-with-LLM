@@ -171,10 +171,15 @@ cutoff_1 <- as.Date("2020-01-01")
 ####################################
 #Fonction analyse période
 ###########################
-analyze_period_accuracy <- function(file_path, model_name, pib_data, cutoff_date) {
+analyze_period_accuracy <- function(file_path, model_name, pib_data, cutoff_date, dummy) {
   
   
   df_model <- read_xlsx(file_path)
+  
+  if (dummy == 0){
+    df_model <- df_model |>
+      filter(!(Date > "2020-01-01" & Date <= "2021-01-12"))
+  }
   
   # B. Nettoyage 
   df_prep <- df_model |>
@@ -252,7 +257,7 @@ analyze_period_accuracy <- function(file_path, model_name, pib_data, cutoff_date
 #Exécution sur tous les modèles
 ############
 
-# Liste de vos fichiers
+# Liste des fichiers
 files_list <- list(
   "BDF_text" = "Final_results/BDF_text_2020.xlsx",
   "BDF_noText" = "Final_results/BDF_noText_2020.xlsx",
@@ -279,7 +284,7 @@ for(model in names(files_list)) {
   path <- files_list[[model]]
   
   try({
-    results_list[[model]] <- analyze_period_accuracy(path, model, pib, cutoff_1)
+    results_list[[model]] <- analyze_period_accuracy(path, model, pib, cutoff_1, COVID)
   })
 }
 
@@ -287,8 +292,124 @@ for(model in names(files_list)) {
 final_period_analysis <- bind_rows(results_list)
 
 
+#############################
+#Period analysis monthly
+############################
 
+analyze_period_monthly_accuracy <- function(file_path, model_name, pib_data, dummy_covid) {
+  
+  # Définition des dates pour la comparaison 
+  cutoff_periode <- as.Date("2019-12-31")
+  
+  df_model <- read_xlsx(file_path) 
+  
+  # Filtre COVID
+  if (dummy_covid == 0){
+    df_model <- df_model |>
+      filter(!(Date >= as.Date("2020-01-01") & Date <= as.Date("2021-01-31")))
+  }
+  
+  #Nettoyage
+  df_prep <- df_model |>
+    mutate(Date = as.Date(Date)) |> 
+    rowwise() |>
+    mutate(median_f = median(c_across(starts_with("forecast_")), na.rm = TRUE)) |>
+    ungroup() |>
+    mutate(
+      month = month(Date), 
+      year = year(Date),
+      forecast_quarter = case_when(
+        month %in% c(2, 3, 4) ~ 1, month %in% c(5, 6, 7) ~ 2,
+        month %in% c(8, 9, 10) ~ 3, month %in% c(11, 12, 1) ~ 4
+      ),
+      # Tri par mois dans le trimestre
+      month_in_quarter = case_when( 
+        month %in% c(2, 5, 8, 11) ~ 1, month %in% c(3, 6, 9, 12) ~ 2,
+        month %in% c(4, 7, 10, 1) ~ 3
+      ),
+      forecast_year = case_when(month == 1 ~ year - 1, TRUE ~ year)
+    )
+  
+  # Join
+  df_joined <- left_join(df_prep, pib_data, by = c("forecast_year", "forecast_quarter"))
+  
+  # Calcul Err abs sur la période
+  df_errors <- df_joined |>
+    filter(!is.na(PIB_PR)) |>
+    mutate(
+      Abs_Error = abs(PIB_PR - median_f),
+      Abs_Error_Squared = Abs_Error^2,
+      Period_Group = case_when(
+        Date.x <= cutoff_periode ~ "2015_2019",
+        Date.x > cutoff_periode ~ "2020_2025"
+      ))
+  
+  # Agrégation par mois et par période
+  summary_stats <- df_errors |>
+    group_by(Period_Group, month_in_quarter) |> 
+    summarise(
+      MAE = mean(Abs_Error, na.rm = TRUE),
+      RMSE = sqrt(mean(Abs_Error_Squared, na.rm = TRUE)),
+      .groups = "drop"
+    )
+  
+  # F. PIVOTAGE POUR CRÉER UNE LIGNE PAR MODÈLE
+  final_wide <- summary_stats |>
+    # Pour avoir une colonne par mois dans le trimestre
+    pivot_wider(
+      names_from = c(Period_Group, month_in_quarter), 
+      values_from = c(MAE, RMSE),
+      names_sep = "_Mois_",
+      names_glue = "{.value}_{Period_Group}_M{month_in_quarter}" 
+    ) |>
+    
+    #Changement de nom de variable
+    mutate(
+      Model = model_name) |>
+    
+    # SÉLECTION ET TRI DES COLONNES DE SORTIE
+    select(Model, starts_with("MAE"), starts_with("RMSE"))
+  
+  return(final_wide)
+}
 
+############
+#Exécution sur tous les modèles
+############
+
+# Liste des fichiers
+files_list <- list(
+  "BDF_text" = "Final_results/BDF_text_2020.xlsx",
+  "BDF_noText" = "Final_results/BDF_noText_2020.xlsx",
+  "BDF_rolling" = "Final_results/BDF_rolling_text_2020.xlsx",
+  "BDF_just" = "Final_results/BDF_just_text_2020.xlsx",
+  "BDF_all" = "Final_results/BDF_all_2020.xlsx",
+  "BDF_excel" = "Final_results/BDF_excel_2020.xlsx",
+  "BDF_excel_error" = "Final_results/BDF_excel_error_2020.xlsx",
+  
+  "INSEE_text" = "Final_results/INSEE_text_2020.xlsx",
+  "INSEE_noText" = "Final_results/INSEE_noText_2020.xlsx",
+  "INSEE_rolling" = "Final_results/INSEE_rolling_text_2020.xlsx",
+  "INSEE_just" = "Final_results/INSEE_just_text_2020.xlsx",
+  "INSEE_all" = "Final_results/INSEE_all_2020.xlsx",
+  "INSEE_excel" =  "Final_results/INSEE_excel_2020.xlsx",
+  "INSEE_excel_error" = "Final_results/INSEE_excel_error_2020.xlsx"
+)
+
+# Boucle pour tout calculer
+results_list <- list()
+
+for(model in names(files_list)) {
+  print(paste("Traitement de :", model))
+  path <- files_list[[model]]
+  
+  try({
+    results_list[[model]] <- analyze_period_monthly_accuracy(path, model, pib, COVID)
+  }, silent = TRUE)
+}
+
+# Tableau final
+final_period_monthly_analysis <- bind_rows(results_list)
 
 ### Pour export
 
