@@ -343,8 +343,9 @@ analyze_period_monthly_accuracy <- function(file_path, model_name, pib_data, dum
       Abs_Error = abs(PIB_PR - median_f),
       Error_Squared = (PIB_PR - median_f)^2,
       Period_Group = case_when(
-        Date.x <= cutoff_periode ~ "2015_2019",
-        Date.x > cutoff_periode ~ "2020_2025"
+        forecast_year < 2020 ~ "2015_2019",
+        forecast_year >=  2020 ~ "2020_2025"
+
       ))
   
   # Agrégation par mois et par période
