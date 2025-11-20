@@ -11,22 +11,24 @@ source("LLM_AR.R")
 
 
 metrics_ISMA <- df_ISMA |>
+  filter(dates >= "2010-02-01") |>
   summarise(
     Model = "ISMA",
-    MAE_M1 = mean(abs(forecast_M1 - PIB_PR), na.rm = TRUE),
-    MAE_M2 = mean(abs(forecast_M2 - PIB_PR), na.rm = TRUE),
-    MAE_M3 = mean(abs(forecast_M3 - PIB_PR), na.rm = TRUE),
-    RMSE_M1 = sqrt(mean((forecast_M1 - PIB_PR)^2, na.rm = TRUE)),
-    RMSE_M2 = sqrt(mean((forecast_M2 - PIB_PR)^2, na.rm = TRUE)),
-    RMSE_M3 = sqrt(mean((forecast_M3 - PIB_PR)^2, na.rm = TRUE))
+    MAE_M1 = mean(abs(PIB_PR - forecast_M1 ), na.rm = TRUE),
+    MAE_M2 = mean(abs(PIB_PR - forecast_M2), na.rm = TRUE),
+    MAE_M3 = mean(abs(PIB_PR - forecast_M3), na.rm = TRUE),
+    RMSE_M1 = sqrt(mean((PIB_PR - forecast_M1)^2, na.rm = TRUE)),
+    RMSE_M2 = sqrt(mean((PIB_PR - forecast_M2)^2, na.rm = TRUE)),
+    RMSE_M3 = sqrt(mean((PIB_PR - forecast_M3)^2, na.rm = TRUE))
   )
 
 metrics_AR <- df_AR |>
+  filter(dates >= "2010-02-01") |>
   summarise(
     Model = "AR(2)",
     # Un seul MAE et RMSE
-    Global_MAE = mean(abs(forecast_AR - PIB_PR), na.rm = TRUE),
-    Global_RMSE = sqrt(mean((forecast_AR - PIB_PR)^2, na.rm = TRUE))
+    Global_MAE = mean(abs(PIB_PR - forecast_AR), na.rm = TRUE),
+    Global_RMSE = sqrt(mean((PIB_PR - forecast_AR)^2, na.rm = TRUE))
   ) |>
   mutate(
     # Répétition pour chaque mois car prévision trimestrielle
