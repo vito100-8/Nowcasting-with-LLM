@@ -32,7 +32,7 @@ pib <- df_PIB |>
 # DUMMY COVID
 # 0 : Supprimer la période Covid (2020-01-01 à 2021-01-31, basé sur la date de prévision mensuelle)
 # 1 : Conserver la période Covid
-covid <- 0
+covid <- 1
 
 # Fonction pour enelever obs covid
 filter_covid_dates <- function(df, dummy) {

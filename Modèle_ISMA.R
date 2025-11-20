@@ -3,7 +3,7 @@
 #Forme : données de 1990 à fin 2024, régression linéaire de 1990 à 2010 puis nowcasting du PIB de 2010 à fin 2024
 
 
-rm(list = ls())  
+#rm(list = ls())  
 source("Library_Nowcasting_LLM.R")
 source("LLM_functions.R")
 source("Script_dates_prev.R")
@@ -124,16 +124,4 @@ for (i in first_forecast_row:nrow(df_PIB_ENQ)) {
 
 df_ISMA <- forecast_results
  
-
-
-#########################
-# Analyse des résultats
-#########################
-
-#MAE
-
-M1 <- mean(abs(df_ISMA$forecast_M1 - df_ISMA$PIB_PR))
-M2 <- mean(abs(df_ISMA$forecast_M2 - df_ISMA$PIB_PR))
-M3 <- mean(abs(df_ISMA$forecast_M3 - df_ISMA$PIB_PR))
-
 

@@ -1,5 +1,6 @@
 # BENCHMARK AR(2)
 
+source("Library_Nowcasting_LLM.R")
 
 ######################
 #Paramètres
@@ -15,6 +16,7 @@ rolling <- TRUE
 ##################################
 
 df_PIB_ENQ <- read_xlsx("Data_PIB_ENQ_2.xlsx", sheet = "data_Q")
+
 
 df_PIB_ENQ_AR <-  df_PIB_ENQ |>
   select(!EVLIV_M1:PREVPRO_M3) |>
@@ -114,16 +116,5 @@ for (i in first_forecast_row:nrow(df_PIB_ENQ_AR)) {
 #Df pour comparaison des résultats
 
 df_AR <- AR_forecast_results
-
-
-
-#########################
-# Analyse des résultats
-#########################
-
-#MAE
-
-MAE_AR <- mean(abs(df_AR$forecast_AR - df_AR$PIB_PR))
-
 
 
