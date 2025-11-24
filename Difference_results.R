@@ -97,6 +97,14 @@ file_pairs <- list(
     initial = "Results/BDF_excel_error.xlsx",
     v2020 = "Final_results/BDF_excel_error_2020.xlsx"
   ),
+  "BDF_ECO_text" = list(
+    initial = "Results/BDF_ECO_text.xlsx",
+    v2020 = "Final_results/BDF_ECO_text_2020.xlsx"
+  ),
+  "BDF_text_FR" = list(
+    initial = "Results/BDF_text_FR.xlsx",
+    v2020 = "Final_results/BDF_text_FR_2020.xlsx"
+  ),
 
   
   # Modèles INSEE
@@ -127,6 +135,19 @@ file_pairs <- list(
   "INSEE_excel_error" = list(
     initial = "Results/INSEE_excel_error.xlsx",
     v2020 = "Final_results/INSEE_excel_error_2020.xlsx"
+  ),
+  "INSEE_ECO_text" = list(
+    initial = "Results/INSEE_ECO_text.xlsx",
+    v2020 = "Final_results/INSEE_ECO_text_2020.xlsx"
+  ),
+  "INSEE_text_FR" = list(
+    initial = "Results/INSEE_text_FR.xlsx",
+    v2020 = "Final_results/INSEE_text_FR_2020.xlsx"
+  ),
+  #Modèle ECO
+  "ECO_text" = list(
+    initial = "Results/ECO_text.xlsx",
+    v2020 = "Final_results/ECO_text_2020.xlsx"
   )
 
 )
