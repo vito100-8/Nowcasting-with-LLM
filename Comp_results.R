@@ -12,9 +12,9 @@ source("LLM_functions.R")
 ###########################
 
 # chemins des fichiers de résultats BDF et INSEE pour le même modèle
-MODEL_NAME <- "No Text" # Nom du modèle pour référence
-FILE_PATH_BDF <- "Final_results/BDF_noText_2020.xlsx" 
-FILE_PATH_INSEE <- "Final_results/INSEE_noText_2020.xlsx" 
+MODEL_NAME <- "ECO Text" # Nom du modèle pour référence
+FILE_PATH_BDF <- "Final_results/BDF_ECO_text_2020.xlsx" 
+FILE_PATH_INSEE <- "Final_results/INSEE_ECO_text_2020.xlsx" 
 
 
 
@@ -56,7 +56,8 @@ stats_both <- stats_both |>
       month %in% c(3, 6, 9, 12) ~ 2, # M2 
       month %in% c(4, 7, 10, 1) ~ 3  # M3 
     ),
-    Mois_Label = paste0("Mois ", month_in_quarter)
+    Mois_Label = paste0("Mois ", month_in_quarter),
+    forecast_year = case_when(month == 1 ~ year - 1, TRUE ~ year)
   )
 
 
@@ -106,14 +107,13 @@ t_test_results <- t.test(df_cor_means$BDF_mean, df_cor_means$INSEE_mean, var.equ
 
 #  Boxplot 
 boxplot <- ggplot(stats_both, aes(x = source, y = as.numeric(median_forecast), fill = source)) +
-  geom_boxplot(alpha = 0.7, 
-               outlier.shape = NA) + 
+  geom_boxplot(alpha = 0.7, outlier.colour = "red", outlier.shape = 1) + 
   # facet par mois
   facet_wrap(~ Mois_Label, scales = "free_y") + 
   labs(
     title = paste("Boxplots de Prévisions (", MODEL_NAME, ") : BDF vs INSEE"),
     y = "Prévision",
-    x = "Organisme",
+    x = "Institution",
     fill = "Source"
   ) +
   theme_minimal() +
@@ -122,8 +122,8 @@ boxplot <- ggplot(stats_both, aes(x = source, y = as.numeric(median_forecast), f
 
 print(boxplot)
 
-#distribution
-density <- ggplot(stats_both, aes(x = as.numeric(median_forecast), fill = source)) +
+#distribution des prévisions
+density_prev <- ggplot(stats_both, aes(x = as.numeric(median_forecast), fill = source)) +
   geom_density(alpha = 0.4) +
   facet_wrap(~ Mois_Label, scales = "free") + 
   labs(
@@ -135,4 +135,67 @@ density <- ggplot(stats_both, aes(x = as.numeric(median_forecast), fill = source
   theme_minimal() +
   scale_x_continuous(limits = c(-1, 1.5))
 
-print(density)
+print(density_prev)
+
+#boxplot des erreurs
+
+##Nettoyage du PIB 
+df_PIB <- read_xlsx("Data_BDF_INSEE.xlsx", sheet = "trimestriel")
+
+
+pib <- df_PIB |>
+  mutate(Date = as.Date(dates), 
+         forecast_year = year(Date), 
+         Month = month(Date), 
+         forecast_quarter = case_when( 
+           Month == 2 ~ 1,
+           Month == 5 ~ 2,
+           Month == 8 ~ 3,
+           Month == 11 ~ 4
+         )
+  )
+
+err_join <- left_join(stats_both, pib, by = c("forecast_year", "forecast_quarter")) 
+err_join <- err_join |> 
+  select(!Date.y) |>
+  mutate(Date = Date.x,
+         errors = PIB_PR - median_forecast,
+         .keep = "unused")
+
+boxplot_err <- ggplot(err_join, aes(x = source, y = errors, fill = source)) +
+  geom_boxplot(alpha = 0.6, outlier.colour = "red", outlier.shape = 1) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "black") + 
+  facet_wrap(~ Mois_Label, scales = "fixed") + 
+  labs(
+    title = paste("Distribution des erreurs de prévision (", MODEL_NAME, ")"),
+    subtitle = "La ligne pointillée indique une erreur nulle",
+    x = "Institution",
+    y = "Erreur de prévision (Points de PIB)",
+    fill = "Source"
+  ) +
+  theme_minimal()
+
+print(boxplot_err)
+  
+#série temporelle des erreurs
+line_err <- ggplot(err_join, aes(x = as.Date(Date), y = errors, color = source, group = source)) +
+  geom_line(linewidth = 1) +
+  geom_point(size = 1.5) +
+  geom_hline(yintercept = 0, linetype = "solid", color = "black") +
+  facet_wrap(~ Mois_Label, ncol = 1, scales = "fixed") + 
+  scale_x_date(
+    date_breaks = 'year',  
+    date_labels = "%Y",      
+    limits = as.Date(c("2015-01-01", "2025-12-31")) 
+  ) +
+  labs(
+    title = paste("Évolution des erreurs dans le temps (", MODEL_NAME, ")"),
+    x = "Date",
+    y = "Erreur",
+    color = "Source"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "bottom") 
+
+print(line_err)
+

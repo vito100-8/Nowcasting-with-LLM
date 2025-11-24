@@ -130,6 +130,8 @@ files_list <- list(
   "BDF_all" = "Final_results/BDF_all_2020.xlsx",
   "BDF_excel" = "Final_results/BDF_excel_2020.xlsx",
   "BDF_excel_error" = "Final_results/BDF_excel_error_2020.xlsx",
+  "BDF_text_FR" = "Final_results/BDF_text_FR_2020.xlsx",
+  "BDF_ECO_text" = "Final_results/BDF_ECO_text_2020.xlsx",
   
   "INSEE_text" = "Final_results/INSEE_text_2020.xlsx",
   "INSEE_noText" = "Final_results/INSEE_noText_2020.xlsx",
@@ -137,7 +139,11 @@ files_list <- list(
   "INSEE_just" = "Final_results/INSEE_just_text_2020.xlsx",
   "INSEE_all" = "Final_results/INSEE_all_2020.xlsx",
   "INSEE_excel" =  "Final_results/INSEE_excel_2020.xlsx",
-  "INSEE_excel_error" = "Final_results/INSEE_excel_error_2020.xlsx"
+  "INSEE_excel_error" = "Final_results/INSEE_excel_error_2020.xlsx",
+  "INSEE_text_FR" ="Final_results/INSEE_text_FR_2020.xlsx",
+  "INSEE_ECO_text" = "Final_results/INSEE_ECO_text_2020.xlsx",
+  
+  "ECO_text" =  "Final_results/ECO_text_2020.xlsx"
 )
 
 # Boucle pour tout calculer
@@ -162,12 +168,6 @@ write.xlsx(final_cutoff_analysis, "Analysis_cutoff.xlsx")
 ######################################################################
 # Split periods
 ####################################################################
-
-
-#2 périodes de 5 ans
-cutoff_1 <- as.Date("2020-01-01")
-
-
 
 ####################################
 #Fonction analyse période
@@ -268,6 +268,8 @@ files_list <- list(
   "BDF_all" = "Final_results/BDF_all_2020.xlsx",
   "BDF_excel" = "Final_results/BDF_excel_2020.xlsx",
   "BDF_excel_error" = "Final_results/BDF_excel_error_2020.xlsx",
+  "BDF_text_FR" = "Final_results/BDF_text_FR_2020.xlsx",
+  "BDF_ECO_text" = "Final_results/BDF_ECO_text_2020.xlsx",
   
   "INSEE_text" = "Final_results/INSEE_text_2020.xlsx",
   "INSEE_noText" = "Final_results/INSEE_noText_2020.xlsx",
@@ -275,7 +277,11 @@ files_list <- list(
   "INSEE_just" = "Final_results/INSEE_just_text_2020.xlsx",
   "INSEE_all" = "Final_results/INSEE_all_2020.xlsx",
   "INSEE_excel" =  "Final_results/INSEE_excel_2020.xlsx",
-  "INSEE_excel_error" = "Final_results/INSEE_excel_error_2020.xlsx"
+  "INSEE_excel_error" = "Final_results/INSEE_excel_error_2020.xlsx",
+  "INSEE_text_FR" ="Final_results/INSEE_text_FR_2020.xlsx",
+  "INSEE_ECO_text" = "Final_results/INSEE_ECO_text_2020.xlsx",
+  
+  "ECO_text" =  "Final_results/ECO_text_2020.xlsx"
 )
 
 # Boucle pour tout calculer
@@ -301,8 +307,6 @@ write.xlsx(final_period_analysis, "Analysis_Period.xlsx")
 
 analyze_period_monthly_accuracy <- function(file_path, model_name, pib_data, dummy_covid) {
   
-  # Définition des dates pour la comparaison 
-  cutoff_periode <- as.Date("2019-12-31")
   
   df_model <- read_xlsx(file_path) 
   
@@ -390,6 +394,8 @@ files_list <- list(
   "BDF_all" = "Final_results/BDF_all_2020.xlsx",
   "BDF_excel" = "Final_results/BDF_excel_2020.xlsx",
   "BDF_excel_error" = "Final_results/BDF_excel_error_2020.xlsx",
+  "BDF_text_FR" = "Final_results/BDF_text_FR_2020.xlsx",
+  "BDF_ECO_text" = "Final_results/BDF_ECO_text_2020.xlsx",
   
   "INSEE_text" = "Final_results/INSEE_text_2020.xlsx",
   "INSEE_noText" = "Final_results/INSEE_noText_2020.xlsx",
@@ -397,7 +403,11 @@ files_list <- list(
   "INSEE_just" = "Final_results/INSEE_just_text_2020.xlsx",
   "INSEE_all" = "Final_results/INSEE_all_2020.xlsx",
   "INSEE_excel" =  "Final_results/INSEE_excel_2020.xlsx",
-  "INSEE_excel_error" = "Final_results/INSEE_excel_error_2020.xlsx"
+  "INSEE_excel_error" = "Final_results/INSEE_excel_error_2020.xlsx",
+  "INSEE_text_FR" ="Final_results/INSEE_text_FR_2020.xlsx",
+  "INSEE_ECO_text" = "Final_results/INSEE_ECO_text_2020.xlsx",
+
+  "ECO_text" =  "Final_results/ECO_text_2020.xlsx"
 )
 
 # Boucle pour tout calculer
