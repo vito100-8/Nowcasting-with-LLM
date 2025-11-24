@@ -5,9 +5,9 @@ source("Library_Nowcasting_LLM.R")
 source("LLM_functions.R")
 source("Script_dates_prev.R")
 source("Parametres_generaux.R")
+dates <- dates2  # avec la pandémie
 
-
-#######################
+######################
 #Paramètres spécifiques
 #######################
 
@@ -188,9 +188,17 @@ for (dt in as.Date(dates$`Date Prevision`)) {
 # réunir les prévisions pour chaque date
 df_results_text_BDF <- do.call(rbind, results_BDF)
 
+# PB EN FR
+if (english==0){
+  df_results_text_BDF[] <- lapply(df_results_text_BDF, function(x) {
+  if(is.character(x)) iconv(x, from = "", to = "UTF-8") else x
+})
+}
+# PB EN FR
+
 # Enregistrement
-write.xlsx(df_results_text_BDF, file = "Results/BDF_text.xlsx", sheetName = 'prevision', rowNames = FALSE)
-print("Enregistré: Results/BDF_text.xlsx \n")
+write.xlsx(df_results_text_BDF, file = "Results/BDF_text_FR.xlsx", sheetName = 'prevision', rowNames = FALSE)
+print("Enregistré: Results/BDF_text_FR.xlsx \n")
 
 t2 <- Sys.time()
 print(diff(range(t1, t2)))
@@ -286,22 +294,18 @@ for (dt in as.Date(df_date$`Date Prevision`)) {
 # réunir les prévisions pour chaque date
 df_results_text_INSEE <- do.call(rbind, results_INSEE)
 
+# PB EN FR
+if (english==0){
+  df_results_text_INSEE[] <- lapply(df_results_text_INSEE, function(x) {
+    if(is.character(x)) iconv(x, from = "", to = "UTF-8") else x
+  })
+}
+# PB EN FR
+
 
 # Enregistrement
-write.xlsx(df_results_text_INSEE, file = "Results/INSEE_text.xlsx", sheetName = 'prevision', rowNames = FALSE)
-print("Enregistré: Results/INSEE_text.xlsx \n")
+write.xlsx(df_results_text_INSEE, file = "Results/INSEE_text_FR.xlsx", sheetName = 'prevision', rowNames = FALSE)
+print("Enregistré: Results/INSEE_text_FR.xlsx \n")
 
 t2 <- Sys.time()
 print(diff(range(t1, t2)))
-
-
-
-
-
-
-
-
-
-
-
-
