@@ -212,7 +212,7 @@ row_id_INSEE <- 1
 
 t1 <- Sys.time()
 
-for (dt in as.Date(df_date$`Date Prevision`)) {
+for (dt in as.Date(dates$`Date Prevision`)) {
   current_date <- as.Date(dt) 
   
   # Trouver les bons pdf, le chemin d'accès et les concaténer

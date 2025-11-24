@@ -85,11 +85,202 @@ if (english == 1) {
   }
 }
 
+######################################
+# Boucle principale BDF 
+#####################################
+# Forecast regex pattern qui sera appelé dans la boucle pour parse
+forecast_confidence_pattern <- "([+-]?\\d+\\.?\\d*)\\s*\\(\\s*(\\d{1,3})\\s*\\)"
+
+# Creation de la list contenant les résultats
+results_ECO_BDF <- list()
+row_id_ECO_BDF <- 1 
+
+t1 <- Sys.time()
+for (dt in as.Date(dates$`Date Prevision`)) {
+  current_date <- as.Date(dt) 
+  
+  # Trouver le bon pdf et son path
+  docname <- get_next_doc(current_date)
+  pdf_path <- path_from_docname(docname, folder = document_folder_BDF)
+  
+  if (is.null(pdf_path)) {
+    warning("No PDF found for date ", current_date, " — skipping.")
+    next
+  }
+  
+  # Chargement du pdf souhaité
+  uploaded_doc <- google_upload(
+    pdf_path,
+    base_url = "https://generativelanguage.googleapis.com/",
+    api_key = cle_API
+  )
+  # Initialisation des dates
+  current_date <- as.Date(dt)
+  mois_index <- as.integer(format(current_date, "%m"))
+  year_current <- as.integer(format(current_date, "%Y"))
+  trimestre_index <- if (mois_index %in% c(1,11,12)) 4 else if (mois_index %in% 2:4) 1 else if (mois_index %in% 5:7) 2 else 3
+  year_prev <- if (mois_index == 1 && trimestre_index == 4) year_current - 1 else year_current
+  prompt_text <- prompt_template(current_date, trimestre_index ,
+                                 year_prev)
+  
+  # appel à Gemini en intégrant le document voulu
+  out_list <- future_lapply(seq_len(n_repro), function(i) {
+    tryCatch({
+      resp <- chat_gemini$chat(uploaded_doc, prompt_text)
+      return(resp)}, error = function(e) {
+        message("API error: ", conditionMessage(e))
+        return(NA_character_)
+      })
+    
+  }, future.seed = TRUE)
+  
+  # Parse les résultats
+  histoires <- sapply(out_list, function(x) {if (is.list(x) && !is.null(x$text)) {
+    return(x$text)
+  } else if (is.character(x)) {
+    return(x)
+  } else {
+    return(NA_character_)
+  }})
+  parsed_list <- lapply(histoires, function(txt) {
+    if (is.null(txt) || length(txt) == 0) return(list(forecast = NA_real_, confidence = NA_integer_, raw = NA_character_))
+    m <- regmatches(txt, regexec(forecast_confidence_pattern, txt))
+    if (length(m[[1]]) >= 3) {
+      list(forecast = as.numeric(m[[1]][2]), confidence = as.integer(m[[1]][3]), raw = txt)
+    } else {
+      list(forecast = NA_real_, confidence = NA_integer_, raw = txt)
+    }
+  })
+  
+  #Df des résultats
+  df_ECO_bdf <- data.frame(Date = as.character(current_date), Prompt = prompt_text, stringsAsFactors = FALSE)
+  for (i in seq_len(n_repro)) {
+    df_ECO_bdf[[paste0("forecast_", i)]]  <- parsed_list[[i]]$forecast
+    df_ECO_bdf[[paste0("confidence_", i)]] <- parsed_list[[i]]$confidence
+    df_ECO_bdf[[paste0("answer_", i)]] <- parsed_list[[i]]$raw
+  }
+  
+  results_ECO_BDF[[row_id_ECO_BDF]] <- df_ECO_bdf
+  row_id_ECO_BDF<- row_id_ECO_BDF+ 1
+  Sys.sleep(0.5)
+}
+
+# réunir les prévisions pour chaque date
+df_results_ECO_text_BDF <- do.call(rbind, results_ECO_BDF)
+
+# Enregistrement
+write.xlsx(df_results_ECO_text_BDF, file = "Results/BDF_ECO_text.xlsx", sheetName = 'prevision', rowNames = FALSE)
+print("Enregistré: Results/BDF_ECO_text.xlsx \n")
+
+t2 <- Sys.time()
+print(diff(range(t1, t2)))
+
+
+########################
+#BOUCLE PRINCIPALE INSEE
+########################
+
+#Création chemin d'accès
+dir.create("INSEE_Text_ECO_files_used", showWarnings = FALSE)
+
+# Forecast regex pattern qui sera appelé dans la boucle pour parse
+forecast_confidence_pattern <- "([+-]?\\d+\\.?\\d*)\\s*\\(\\s*(\\d{1,3})\\s*\\)"
+
+# Creation de la list contenant les résultats
+results_ECO_INSEE <- list()
+row_id_ECO_INSEE <- 1 
+
+t1 <- Sys.time()
+
+for (dt in as.Date(dates$`Date Prevision`)) {
+  current_date <- as.Date(dt) 
+  
+  # Trouver les bons pdf, le chemin d'accès et les concaténer
+  emi_path <- get_last_insee_docs_by_type(current_date,"EMI",  document_folder_INSEE)
+  ser_path <- get_last_insee_docs_by_type(current_date, "SER",document_folder_INSEE)
+  bat_path <- get_last_insee_docs_by_type(current_date, "BAT",document_folder_INSEE)
+  
+  ##concaténation des documents dans le chemin d'accès spécifié
+  all_insee_docs_to_combine <- c(emi_path, ser_path, bat_path)
+  combined_pdf_path <- file.path( "./INSEE_Text_ECO_files_used/", paste0("combined_INSEE_", format(current_date, "%Y%m%d"), ".pdf"))
+  INSEE_path <- merge_pdfs(all_insee_docs_to_combine, combined_pdf_path)
+  
+  # Chargement du pdf concaténé souhaité
+  uploaded_doc <- google_upload(
+    INSEE_path,
+    base_url = "https://generativelanguage.googleapis.com/",
+    api_key = cle_API
+  )
+  
+  # Initialisation des dates
+  current_date <- as.Date(dt)
+  mois_index <- as.integer(format(current_date, "%m"))
+  year_current <- as.integer(format(current_date, "%Y"))
+  trimestre_index <- if (mois_index %in% c(1,11,12)) 4 else if (mois_index %in% 2:4) 1 else if (mois_index %in% 5:7) 2 else 3
+  year_prev <- if (mois_index == 1 && trimestre_index == 4) year_current - 1 else year_current
+  prompt_text <- prompt_template(current_date, trimestre_index ,
+                                 year_prev)
+  
+  # appel à Gemini en intégrant le document voulu
+  out_list <- future_lapply(seq_len(n_repro), function(i) {
+    tryCatch({
+      resp <- chat_gemini$chat(uploaded_doc, prompt_text)
+      return(resp)}, error = function(e) {
+        message("API error: ", conditionMessage(e))
+        return(NA_character_)
+      })
+    
+  }, future.seed = TRUE)
+  
+  # Parse les résultats
+  histoires <- sapply(out_list, function(x) {if (is.list(x) && !is.null(x$text)) {
+    return(x$text)
+  } else if (is.character(x)) {
+    return(x)
+  } else {
+    return(NA_character_)
+  }})
+  parsed_list <- lapply(histoires, function(txt) {
+    if (is.null(txt) || length(txt) == 0) return(list(forecast = NA_real_, confidence = NA_integer_, raw = NA_character_))
+    m <- regmatches(txt, regexec(forecast_confidence_pattern, txt))
+    if (length(m[[1]]) >= 3) {
+      list(forecast = as.numeric(m[[1]][2]), confidence = as.integer(m[[1]][3]), raw = txt)
+    } else {
+      list(forecast = NA_real_, confidence = NA_integer_, raw = txt)
+    }
+  })
+  
+  #Df des résultats
+  df_ECO_INSEE <- data.frame(Date = as.character(current_date), Prompt = prompt_text, stringsAsFactors = FALSE)
+  for (i in seq_len(n_repro)) {
+    df_ECO_INSEE[[paste0("forecast_", i)]]  <- parsed_list[[i]]$forecast
+    df_ECO_INSEE[[paste0("confidence_", i)]] <- parsed_list[[i]]$confidence
+    df_ECO_INSEE[[paste0("answer_", i)]] <- parsed_list[[i]]$raw
+  }
+  
+  results_ECO_INSEE[[row_id_ECO_INSEE]] <- df_ECO_INSEE
+  row_id_ECO_INSEE <- row_id_ECO_INSEE + 1
+  Sys.sleep(0.5)
+}
+
+# réunir les prévisions pour chaque date
+df_results_ECO_text_INSEE <- do.call(rbind, results_ECO_INSEE)
+
+
+# Enregistrement
+write.xlsx(df_results_ECO_text_INSEE, file = "Results/INSEE_ECO_text.xlsx", sheetName = 'prevision', rowNames = FALSE)
+print("Enregistré: Results/INSEE_ECO_text.xlsx \n")
+
+t2 <- Sys.time()
+print(diff(range(t1, t2)))
+
+
 
 ###################################
-# Boucle principale BDF
+# Boucle principale docs concaténés
 ###################################
-
+# Ajouter ceci avant la boucle principale docs concaténés
+dir.create("Both_files_used_ECO", showWarnings = FALSE)
 
 # Forecast regex pattern qui sera appelé dans la boucle pour parse
 forecast_confidence_pattern <- "([+-]?\\d+\\.?\\d*)\\s*\\(\\s*(\\d{1,3})\\s*\\)"
@@ -118,7 +309,7 @@ for (dt in as.Date(dates$`Date Prevision`)) {
   
   ##concaténation des documents dans le chemin d'accès spécifié
   all_docs_to_combine <- c(emi_path, ser_path, bat_path, pdf_path)
-  combined_pdf_path <- file.path( "./Both_files_used/", paste0("combined_", format(current_date, "%Y%m%d"), ".pdf"))
+  combined_pdf_path <- file.path( "./Both_files_used_ECO/", paste0("combined_", format(current_date, "%Y%m%d"), ".pdf"))
   input_docs <- merge_pdfs(all_docs_to_combine, combined_pdf_path)
   
   # Chargement du pdf souhaité
