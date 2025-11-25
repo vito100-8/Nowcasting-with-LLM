@@ -7,8 +7,12 @@ source("Library_Nowcasting_LLM.R")
 # Importation des résultats
 
 # no_text  => 2020-02 à 07, 2020-09 et 2021-01
+# CAS anglais
 df_BDF_2020 <- read_excel('Results/BDF_noText_sansEMC.xlsx')
 df_INSEE_2020 <- read_excel('Results/INSEE_noText_sansEMC.xlsx')
+# CAS français
+df_BDF_2020_FR <- read_excel('Results/BDF_noText_sansEMC_FR.xlsx')
+df_INSEE_2020_FR <- read_excel('Results/INSEE_noText_sansEMC_FR.xlsx')
 
 # si on veut tout remplacer de janv 2020 à janv 2021 (pour rolling) 
 #df_BDF_2020 <- read_excel('Results/BDF_noText2.xlsx')
@@ -64,12 +68,13 @@ df_BDF <- read_excel('Results/BDF_text_FR.xlsx')   #1
 df_INSEE <- read_excel('Results/INSEE_text_FR.xlsx')   #2
 
 # remplace les dates communes de 2020 et ajoute les dates manquantes
+# ON UTILISE LES RESULTATS DE NO_TEXT en FRANCAIS
 df_final_BDF <- df_BDF %>%
-  rows_upsert(df_BDF_2020, by = "Date") %>%
+  rows_upsert(df_BDF_2020_FR, by = "Date") %>%
   arrange(Date)
 
 df_final_INSEE <- df_INSEE %>%
-  rows_upsert(df_INSEE_2020, by = "Date") %>%
+  rows_upsert(df_INSEE_2020_FR, by = "Date") %>%
   arrange(Date)
 
 write.xlsx(df_final_BDF, file = "Final_Results/BDF_text_FR_2020.xlsx", 
