@@ -25,7 +25,7 @@ err_mbessec <- err_mbessec |>
   
 
 err_ISMA <- df_ISMA |>
-  filter(dates >= "2010-02-01") |>
+  filter(dates >= "2015-02-01") |>
   rowwise() |>
   mutate(error_M1 = PIB_PR - forecast_M1,
          error_M2 = PIB_PR - forecast_M2,
@@ -34,7 +34,7 @@ err_ISMA <- df_ISMA |>
          .keep = "none")
 
 err_AR <- df_AR |>
-  filter(dates >= "2010-02-01") |>
+  filter(dates >= "2015-02-01") |>
   rowwise() |>
   mutate(error_AR = PIB_PR -forecast_AR,
          dates = dates,
