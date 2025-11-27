@@ -68,7 +68,7 @@ if (english == 1) {
   }
   
 } else {
-  try(Sys.setlocale("LC_TIME", "French"), silent = TRUE)
+  try(Sys.setlocale("LC_TIME", "fr_FR.UTF-8"), silent = TRUE)
   
   current_boss <- function(type, d) {
     if (type == "BDF") return(BDF_current_boss(d))
