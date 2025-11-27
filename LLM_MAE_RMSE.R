@@ -148,6 +148,7 @@ metrics_BDF_noText <- BDF_noText_forecast |>
             RMSE_Mois_2 = sqrt(mean((PIB_PR - Forecast_Mois_2)^2, na.rm = TRUE)),
             RMSE_Mois_3 = sqrt(mean((PIB_PR - Forecast_Mois_3)^2, na.rm = TRUE)))
 
+
 # =========================================================
 # MODÈLE 3 : BDF_rolling_text
 # =========================================================
@@ -392,6 +393,7 @@ metrics_BDF_excel_error <- BDF_excel_error_forecast |>
             RMSE_Mois_2 = sqrt(mean((PIB_PR - Forecast_Mois_2)^2, na.rm = TRUE)),
             RMSE_Mois_3 = sqrt(mean((PIB_PR - Forecast_Mois_3)^2, na.rm = TRUE)))
 
+##########
 
 # --- Modèles INSEE ---
 

@@ -389,21 +389,20 @@ compute_errors <- function(df_model, df_obs) {
 #################################
 
 #Fonction moyenne arithmétique
-weight_avg <- function(pred_eco, pred_LLM) {
-  nowcast <- rowMeans(c(pred_eco, pred_LLM))
-  return(list(
-    nowcast = nowcast
-  ))
+weight_avg <- function(pred_1, pred_2) {
+  comb_data <- cbind(pred_1, pred_2)
+  nowcast <- rowMeans(comb_data)
+  return(as.vector(nowcast))
 }
 
 #Fonction inverse des erreurs moyennes quadratiques
 
-rolling_inversed_weight <- function(y, pred_eco, pred_LLM, rolling_window) {
+rolling_inversed_weight <- function(y, pred_1, pred_2, rolling_window) {
   
   # vérifications des inputs
   if (!is.numeric(y)) stop("y doit être un vecteur numérique.")
-  if (length(pred_eco) != length(pred_LLM) || length(y) != length(pred_eco)) {
-    stop("y, pred_eco et pred_LLM doivent avoir la même longueur.")
+  if (length(pred_1) != length(pred_2) || length(y) != length(pred_1)) {
+    stop("y, pred_1 et pred_2 doivent avoir la même longueur.")
   }
   n <- length(y)
   if (rolling_window >= n) stop("rolling_window doit être plus petite que la taille de l’échantillon.")
@@ -420,8 +419,8 @@ rolling_inversed_weight <- function(y, pred_eco, pred_LLM, rolling_window) {
     train_idx <- (i - rolling_window + 1):i
     
     # calcul des erreurs dans la fenêtre courante
-    err_eco <- y[train_idx] - pred_eco[train_idx]
-    err_LLM <- y[train_idx] - pred_LLM[train_idx]
+    err_eco <- y[train_idx] - pred_1[train_idx]
+    err_LLM <- y[train_idx] - pred_2[train_idx]
     
     # MSE de chaque modèle dans la fenêtre
     MSE_eco <- mean(err_eco^2, na.rm = TRUE)
@@ -432,7 +431,7 @@ rolling_inversed_weight <- function(y, pred_eco, pred_LLM, rolling_window) {
     w_norm <- w_raw / sum(w_raw)
     
     # combinaison pondérée des prévisions à la date i 
-    nowcast[i] <- w_norm[1] * pred_eco[i] + w_norm[2] * pred_LLM[i]
+    nowcast[i] <- w_norm[1] * pred_1[i] + w_norm[2] * pred_2[i]
     
     # stocker les poids correspondants
     weights_mat[row_id, ] <- w_norm
@@ -468,7 +467,7 @@ rolling_inversed_weight <- function(y, pred_eco, pred_LLM, rolling_window) {
 #      weights  : matrix n_preds x (k + intercept) des coefficients estimés à chaque pas
 
 
-gr_rolling <- function(y, forecasts, rolling_window = 80) {
+gr_rolling <- function(y, forecasts, rolling_window) {
   # vérifications des inputs
   if (!is.numeric(y)) stop("y doit être un vecteur numérique.")
   if (!(is.matrix(forecasts) || is.data.frame(forecasts))) stop("forecasts doivent être une matrice ou un df.")
@@ -478,20 +477,23 @@ gr_rolling <- function(y, forecasts, rolling_window = 80) {
   if (rolling_window >= n) stop("rolling_window doit être strictement inférieur à la longueur de  y.")
   
 
+  #Définition des modèles soit k = 2 modèles
+  f1 = forecasts[,1]
+  f2 = forecasts[,2]
   
   # Initialisation sorties
   combined <- rep(NA_real_, n)
   # on stockera poids pour chaque prédiction, une colonne pour l'intercept
   coef_names <-  c("(Intercept)", colnames(forecasts)) 
-  max_preds <- n - rolling_window
+  max_preds <- n - rolling_window + 1
   weights_mat <- matrix(NA_real_, nrow = max_preds, ncol = length(coef_names),
                         dimnames = list(NULL, coef_names))
   row_id <- 1
 
   # boucle rolling
-  for (i in rolling_window:(n-1)) {
+  for (i in rolling_window:n) {
     train_idx <- (i - rolling_window +1) : i
-    test_idx  <- i + 1
+    test_idx  <- i 
     
     # construire df d'entraînement et de prévision
 
@@ -526,4 +528,200 @@ gr_rolling <- function(y, forecasts, rolling_window = 80) {
     weights = weights_mat
   ))
 }
+#############################################################
+# Forecast combination (format ISMA)
+###############################################
 
+
+
+#  Fonction moyenne arithmétique
+
+weight_avg_month <- function(pred_1, pred_2) {
+  pred_1 <- as.data.frame(pred_1)
+  pred_2 <- as.data.frame(pred_2)
+  
+  # Initialisation du DF 
+  n <- nrow(pred_1)
+  avg_forecasts <- data.frame(matrix(NA, nrow = n, ncol = 3))
+  colnames(avg_forecasts) <- c("Mois_1", "Mois_2", "Mois_3")
+  
+  # calcul colonne par colonne
+  for (j in 1:3) {
+    comb_data <- cbind(pred_1[, j], pred_2[, j])
+    # Moyenne ligne par ligne
+    avg_forecasts[, j] <- rowMeans(comb_data, na.rm = TRUE)
+  }
+  
+  return(avg_forecasts)
+}
+
+# Fonction inverse des MSE
+
+rolling_inversed_weight_month <- function(y, pred_1, pred_2, rolling_window) {
+  
+  # Au cas où 
+  pred_1 <- as.data.frame(pred_1)
+  pred_2 <- as.data.frame(pred_2)
+  
+  if (!is.numeric(y)) stop("y doit être un vecteur numérique.")
+  if (nrow(pred_1) != nrow(pred_2) || length(y) != nrow(pred_1)) {
+    stop("y, pred_1 et pred_2 doivent avoir le même nombre de lignes (trimestres).")
+  }
+  
+  n <- length(y)
+  if (rolling_window >= n) stop("rolling_window doit être plus petite que la taille de l’échantillon.")
+  
+  # Initialisation des sorties
+  nowcast_df <- data.frame(matrix(NA_real_, nrow = n, ncol = 3))
+  colnames(nowcast_df) <- c("Mois_1", "Mois_2", "Mois_3")
+  
+  # weights devient une liste avec une colonne pour chaque mois
+  weights_list <- list()
+  
+  #boucle sur chaque colonne
+  for (j in 1:3) {
+    
+    #vecteurs pour le mois j
+    p1_vec <- pred_1[, j]
+    p2_vec <- pred_2[, j]
+    
+    # Initialisation pour ce mois
+    nowcast_vec <- rep(NA_real_, n)
+    # Matrice des poids pour ce mois
+    weights_mat <- matrix(NA_real_, nrow = n - rolling_window + 1,
+                          ncol = 2, dimnames = list(NULL, c("w_eco", "w_LLM")))
+    row_id <- 1
+    
+    # Boucle Rolling sur les valeurs extraites
+    for (i in rolling_window:n) {
+      train_idx <- (i - rolling_window + 1):i
+      
+      # Calcul des erreurs et MSE
+      err_eco <- y[train_idx] - p1_vec[train_idx]
+      err_LLM <- y[train_idx] - p2_vec[train_idx]
+      
+      MSE_eco <- mean(err_eco^2, na.rm = TRUE)
+      MSE_LLM <- mean(err_LLM^2, na.rm = TRUE)
+      
+      # Weights
+      w_raw <- c(1 / MSE_eco, 1 / MSE_LLM)
+      # Gestion cas division par zéro si MSE très proche de 0
+      if (any(is.infinite(w_raw))) { w_raw[is.infinite(w_raw)] <- 1 }
+      
+      w_norm <- w_raw / sum(w_raw)
+      
+      # Prévision finale
+      nowcast_vec[i] <- w_norm[1] * p1_vec[i] + w_norm[2] * p2_vec[i]
+      
+      # Stockage weights
+      weights_mat[row_id, ] <- w_norm
+      row_id <- row_id + 1
+    }
+    
+    # Stockage des résultats du mois j
+    nowcast_df[, j] <- nowcast_vec
+    # Nettoyage matrice poids
+    weights_mat <- weights_mat[1:(row_id - 1), , drop = FALSE]
+    weights_list[[paste0("Mois_", j)]] <- weights_mat
+  }
+  
+  # Nettoyage final
+  nowcast_df <- na.omit(nowcast_df)
+  attr(nowcast_df, "na.action") <- NULL
+  
+  return(list(
+    nowcast = nowcast_df,
+    weights = weights_list
+  ))
+}
+
+# Fonction Granger-Ramanathan (Adaptée pour 3 colonnes)
+
+gr_rolling_month <- function(y, pred_1, pred_2, rolling_window) {
+  
+  # Vérifications
+  pred_1 <- as.data.frame(pred_1)
+  pred_2 <- as.data.frame(pred_2)
+  
+  if (!is.numeric(y)) stop("y doit être un vecteur numérique.")
+  if (nrow(pred_1) != nrow(pred_2) || length(y) != nrow(pred_1)) {
+    stop("y, pred_1 et pred_2 doivent avoir le même nombre de lignes.")
+  }
+  
+  n <- length(y)
+  if (rolling_window >= n) stop("rolling_window doit être strictement inférieur à la longueur de y.")
+  
+  # Initialisation sorties
+  nowcast_df <- data.frame(matrix(NA_real_, nrow = n, ncol = 3))
+  colnames(nowcast_df) <- c("Mois_1", "Mois_2", "Mois_3")
+  
+  weights_list <- list()
+  coef_names <- c("(Intercept)", "w_1", "w_2")
+  
+  #boucle sur chaque colonne
+  for (j in 1:3) {
+    
+    #vecteurs du mois j
+    p1_vec <- pred_1[, j]
+    p2_vec <- pred_2[, j]
+    
+    nowcast_vec <- rep(NA_real_, n)
+    
+    # Matrice poids pour mois j
+    max_preds <- n - rolling_window + 1
+    weights_mat <- matrix(NA_real_, nrow = max_preds, ncol = length(coef_names),
+                          dimnames = list(NULL, coef_names))
+    row_id <- 1
+    
+    # Boucle Rolling
+    for (i in rolling_window:n) {
+      train_idx <- (i - rolling_window + 1):i
+      
+      # A noter : Pour prévoir i, on entraine sur les données jusqu'à i 
+      # On suppose que y[i] n'est pas connu au moment de la prévision, mais pour calibrer les poids en in-sample on utilise l'historique.
+      
+      # Données d'entrainement (historique jusqu'à i)
+      df_train <- data.frame(
+        var_y = y[train_idx], 
+        var1  = p1_vec[train_idx], 
+        var2  = p2_vec[train_idx]
+      )
+      
+      # Données pour la prévision (i)
+      df_prev <- data.frame(
+        var_y = y[i], 
+        var1  = p1_vec[i], 
+        var2  = p2_vec[i]
+      )
+      
+      # Régression
+      fit <- lm(var_y ~ var1 + var2, data = df_train)
+      
+      if (!is.null(fit)) {
+        # Prédiction
+        pred_val <- predict(fit, newdata = df_prev)
+        nowcast_vec[i] <- pred_val
+        
+        # Stockage poids
+        weights_mat[row_id, ] <- coef(fit)
+      }
+      
+      row_id <- row_id + 1
+    }
+    
+    # Stockage résultats du mois j
+    nowcast_df[, j] <- nowcast_vec
+    
+    # Nettoyage matrice poids
+    weights_mat <- weights_mat[1:(row_id - 1), , drop = FALSE]
+    weights_list[[paste0("Mois_", j)]] <- weights_mat
+  }
+  
+  nowcast_df <- na.omit(nowcast_df)
+  attr(nowcast_df, "na.action") <- NULL
+  
+  return(list(
+    forecast_comb = nowcast_df,
+    weights = weights_list
+  ))
+}
