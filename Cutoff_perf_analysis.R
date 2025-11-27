@@ -169,6 +169,8 @@ write.xlsx(final_cutoff_analysis, "Analysis_cutoff.xlsx")
 # Split periods
 ####################################################################
 
+cutoff_1 <- as.Date("2019-11-01")
+
 ####################################
 #Fonction analyse période
 ###########################
