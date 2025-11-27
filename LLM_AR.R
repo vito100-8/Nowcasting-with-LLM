@@ -2,20 +2,24 @@
 
 source("Library_Nowcasting_LLM.R")
 
+
 ######################
-#Paramètres
-##################
+#PARAMETRES UTILISATEUR
+#######################
 
 #Taille fenêtre
 window <- 40
 #ROLLING WINDOW OU RECURSIF
-rolling <- TRUE
+rolling <- FALSE
+#Choix traitement covid
+covid_treatment <- 1 #  0 pour méthode dummy, 1 pour méthode où l'on intègre pas les données covid dans le training dataset
 
-###############################
-#Ouverture et traitement données
-##################################
 
-df_PIB_ENQ <- read_xlsx("Data_PIB_ENQ_2.xlsx", sheet = "data_Q")
+#####################
+#INITIALISATION
+######################
+
+df_PIB_ENQ <- read_xlsx("Data_PIB_ENQ_3.xlsx", sheet = "PIB")
 
 
 df_PIB_ENQ_AR <-  df_PIB_ENQ |>
@@ -31,15 +35,13 @@ df_PIB_ENQ_AR <-  df_PIB_ENQ |>
                        lag(PIB_lag)), 
     dates = as.Date((dates), format = "%Y-%m-%d")) 
 
-####################################
-# Choix méthode pour trimestres covid
-###################################
 
-covid_treatment <- 1 #  0 pour méthode dummy, 1 pour méthode où l'on intègre pas les données covid dans le training dataset
+
+
 
 #Dummy de 2020Q1 à 2021Q4
 if (covid_treatment == 0 ){
-  df_PIB_ENQ_AR<- df_PIB_ENQ_AR|>
+  df_PIB_ENQ_AR <- df_PIB_ENQ |>
     mutate(COVID_Q1_2020 = ifelse(dates == as.Date("2020-02-01") , 1, 0),
            COVID_Q2_2020 = ifelse(dates == as.Date("2020-05-01"), 1, 0),
            COVID_Q3_2020 = ifelse(dates == as.Date("2020-08-01"), 1, 0),
@@ -50,13 +52,12 @@ if (covid_treatment == 0 ){
 }
 
 
-
 #######
 #Modèle
 ########
 
 #Date de début de training
-start_forecast_date <- as.Date("2005-02-01") #Peut être automatisé car là nécessaire de rentrer une date comprise dans df_PIB_Q$dates
+start_forecast_date <- as.Date("2015-02-01") #Peut être automatisé car là nécessaire de rentrer une date comprise dans df_PIB_Q$dates
 ## Poistion dans le dataset
 first_forecast_row <- which(df_PIB_ENQ_AR$dates >= start_forecast_date)[1]
 
@@ -72,14 +73,17 @@ AR_forecast_results <- tibble(
   forecast_AR = double(),       
 )
 
+# Période COVID 
+start_covid_period <- as.Date("2020-01-01")
+end_covid_period <- as.Date("2021-10-31")
 
 
 # Boucle de prévision : itérer jusqu'à la fin du dataset depuis la date de training choisie
 for (i in first_forecast_row:nrow(df_PIB_ENQ_AR)) {
-  
+
   # Date du forecast
   current_forecast_date <- df_PIB_ENQ_AR$dates[i]
-  i_start <- ifelse(rolling == TRUE, i - window, 1)
+  i_start <- ifelse(rolling == TRUE, i - window, 21)
   
     # Sélection dataset d'entrainement
     if (covid_treatment == 1 && rolling == TRUE){
@@ -113,9 +117,10 @@ for (i in first_forecast_row:nrow(df_PIB_ENQ_AR)) {
       
     }else{
       #Si itératif
-      training_data <- df_PIB_ENQ_AR[1 : i-1, ]
+      training_data <- df_PIB_ENQ_AR[i_start : i-1, ]
       reg_formula <- PIB_PR ~ PIB_lag + PIB_lag_2 + INDIC09 + 
         COVID_Q1_2020 + COVID_Q2_2020 + COVID_Q3_2020 + COVID_Q2_2021 + COVID_Q3_2021
+      
       if (covid_treatment == 1) {
         training_data <- training_data |>
           filter(!(dates >= start_covid_period & dates <= end_covid_period))
@@ -152,4 +157,4 @@ for (i in first_forecast_row:nrow(df_PIB_ENQ_AR)) {
 
 df_AR <- AR_forecast_results
 
-
+write.xlsx(df_AR, "Results_AR.xlsx")
