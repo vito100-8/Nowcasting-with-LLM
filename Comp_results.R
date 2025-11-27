@@ -3,7 +3,7 @@
 rm(list = ls()) 
 source("Library_Nowcasting_LLM.R")
 source("LLM_functions.R")
-
+source("Cutoff_perf_analysis.R")
 
 #A FAIRE : ADAPTER A LA STRUCTURE MONTHLY LES DONNEES, REVERIFIER OUTPUT
 
@@ -82,22 +82,19 @@ stats_des <- stats_both |>
 
 
 # Corrélation et T-Test sur les Moyennes
-df_BDF_means <- stats_BDF |> 
-  mutate(BDF_mean = mean(median_forecast), na.rm = TRUE) |>
-  select(Date, BDF_mean)
+test_BDF <- stats_BDF |> 
+  select(Date, median_forecast)
 
-df_INSEE_means <- stats_INSEE |> 
-  mutate(INSEE_mean = mean(median_forecast), na.rm = TRUE) |>
-  select(Date, INSEE_mean)
+test_insee <- stats_INSEE |> 
+  select(Date, median_forecast)
 
-df_cor_means <- inner_join(df_BDF_means, df_INSEE_means, by = "Date")
-
-# Corrélation Spearman entre les moyennes
-correlation_mean <- cor(df_cor_means$BDF_mean, df_cor_means$INSEE_mean, method = "spearman", use = "pairwise.complete.obs")
+test_both <- inner_join(test_BDF, test_insee, by = "Date")
+# Corrélation Spearman
+correlation_mean <- cor(test_both$median_forecast.x, test_both$median_forecast.y, method = "spearman", use = "pairwise.complete.obs")
 
 
 # T-Test sur les moyennes (variance inégale)
-t_test_results <- t.test(df_cor_means$BDF_mean, df_cor_means$INSEE_mean, var.equal = FALSE)
+t_test_results <- t.test(test_both$median_forecast.x, test_both$median_forecast.y, var.equal = FALSE)
 
 
 #############################################
@@ -186,7 +183,7 @@ line_err <- ggplot(err_join, aes(x = as.Date(Date), y = errors, color = source, 
   scale_x_date(
     date_breaks = 'year',  
     date_labels = "%Y",      
-    limits = as.Date(c("2015-01-01", "2025-12-31")) 
+    limits = as.Date(c("2015-01-01", "2019-12-31")) 
   ) +
   labs(
     title = paste("Évolution des erreurs dans le temps (", MODEL_NAME, ")"),
@@ -195,7 +192,74 @@ line_err <- ggplot(err_join, aes(x = as.Date(Date), y = errors, color = source, 
     color = "Source"
   ) +
   theme_minimal() +
-  theme(legend.position = "bottom") 
+  theme(legend.position = "bottom") +
+  scale_y_continuous(limits = c(-0.5, 0.5))
 
 print(line_err)
 
+
+#Rang des modèles
+df_ranked <- final_period_monthly_analysis |>
+  mutate(across(c(starts_with("MAE"), starts_with("RMSE")), rank)) |>
+  pivot_longer(
+    cols = -Model, 
+    names_to = "Metrique", 
+    values_to = "Rang"
+  ) 
+
+
+ggplot(df_ranked, aes(x = Metrique, y = Model, fill = Rang)) +
+  geom_tile(color = "white", lwd = 1) +
+  geom_text(aes(label = Rang), color = "white", fontface = "bold") + 
+  scale_fill_gradient(low = "#2E86C1", high = "#D6EAF8") +
+  theme_minimal() +
+  labs(title = "Classement des modèles",
+       x = "", y = "") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+## Classement de modèles d'après le rang moyen 
+
+df_rank_mean <- df_ranked |>
+  group_by(Model) |>
+  summarise(
+    #Moyenne des rangs basée sur le MAE
+    Mean_Rank_MAE = mean(
+      Rang[str_detect(Metrique, "^MAE_")], 
+      na.rm = TRUE
+    ),
+    
+   #Moyenne des rangs basée sur le RMSE
+    Mean_Rank_RMSE = mean(
+      Rang[str_detect(Metrique, "^RMSE_")], 
+      na.rm = TRUE
+    ),
+    .groups = 'drop'
+  ) |> 
+  arrange(Mean_Rank_MAE)
+
+
+#Radar de rang
+df_rank_radar <- final_period_monthly_analysis |>
+  slice_head(n=8) |>
+  mutate(across(c(starts_with("MAE"), starts_with("RMSE")), rank)) |>
+  select(!(starts_with("RMSE")))  |>
+  rename_with(
+    ~ str_remove(., "^MAE_"), 
+    .cols = starts_with("MAE") 
+  )
+
+nb_modeles <- nrow(df_rank_radar)
+
+ggradar(
+  df_rank_radar,
+  grid.mid = nb_modeles / 2, #Milieu
+  grid.max = nb_modeles,     # Bord = Pire classement
+  
+
+  values.radar = c( "","Moyen", paste("Dernier")),
+  
+  group.line.width = 0.6,
+  group.point.size = 0,
+  legend.position = "right"
+) +
+  ggtitle("Rank (MAE)")
