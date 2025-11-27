@@ -7,7 +7,7 @@ source("LLM_AR.R")
 # COVID
 ###############
 
-COVID <- 1 # 1 = on supprime la période COVID; 0 = on garde
+COVID <- 0 # 1 = on supprime la période COVID; 0 = on garde
 if (COVID == 1){
   df_ISMA <- df_ISMA |>
     filter(dates <  "2020-02-01" | dates >= "2022-02-01") 
