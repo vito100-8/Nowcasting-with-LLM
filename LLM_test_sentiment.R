@@ -8,7 +8,7 @@ source("Library_Nowcasting_LLM.R")
 source("LLM_functions.R")
 source("Script_dates_prev.R")
 source("Parametres_generaux.R")
-
+dates <- dates3  # 2010 à 2020 et 2020 complet
 
 #######################
 #Paramètres spécifiques
@@ -52,12 +52,12 @@ if (english == 1) {
       "Forget the previous instructions and answers. You are an economist giving a speech about the economic outlook of France. Today is ",
       format(d, "%d %B %Y"), ". ",
       "You will be provided with a document with information about the current state and recent past of the French economy. ",
-      "Using only the information in that document and information that was available on or before ", format(d, "%d %B %Y"),
+      "Using ONLY the information in that document and information that was available on or before ", format(d, "%d %B %Y"),
       ", provide a score between -4 and +4 assessing the performance of French economic activity in the ", current_quarter, " quarter of ", y_prev,
       " and a confidence level (integer 0–100). ",
       "-4 means significantly contracting activity and +4 means a significantly expanding activity.",
       "Output EXACTLY in this format on a single line (no extra text):\n",
-      "<score> (<confidence>)\nExample: +3 (80)\n",
+      "<score> (<confidence>)\nExample: +3.2 (80)\n",
       "Do NOT use any information published after ", format(d, "%d %B %Y"), "."
     )
   }
@@ -83,7 +83,7 @@ if (english == 1) {
       trimestre_actuel, " trimestre ", y_prev,
       " et un niveau de confiance (entier de 0–100).. ",
       "Renvoyez EXACTEMENT sur une seule ligne (aucun texte supplémentaire) :\n",
-      "<score> (<confiance>)\nExemple : +3 (80)\n",
+      "<score> (<confiance>)\nExemple : +3.2 (80)\n",
       ". -4 décrit une contraction significative de l'activité et +4 décrit une expansion significative de l'activité.",
       "N'utilisez AUCUNE information publiée après le ", format(d, "%d %B %Y"), "."
     )
@@ -106,6 +106,7 @@ df_results <- list()
 row_id <- 1 
 
 t1 <- Sys.time()
+
 for (dt in as.Date(dates$`Date Prevision`)) {
   current_date <- as.Date(dt) 
   
@@ -113,10 +114,10 @@ for (dt in as.Date(dates$`Date Prevision`)) {
   docname <- get_next_doc(current_date)
   pdf_path <- path_from_docname(docname, folder = document_folder_BDF)
   
-  if (is.null(pdf_path)) {
-    warning("No PDF found for date ", current_date, " — skipping.")
-    next
-  }
+  # if (is.null(pdf_path)) {
+  #   warning("No PDF found for date ", current_date, " — skipping.")
+  #   next
+  # }
   
   
   # Trouver les bons pdf, le chemin d'accès et les concaténer
@@ -143,7 +144,7 @@ for (dt in as.Date(dates$`Date Prevision`)) {
   year_prev <- if (mois_index == 1 && trimestre_index == 4) year_current - 1 else year_current
   prompt_text <- prompt_template( current_date, trimestre_index ,
                                  year_prev)
-  
+  print(prompt_text)  
   # appel à Gemini en intégrant le document voulu
   out_list <- future_lapply(seq_len(n_repro), function(i) {
     tryCatch({
@@ -190,23 +191,8 @@ for (dt in as.Date(dates$`Date Prevision`)) {
 df_indice <- do.call(rbind, df_results)
 
 # Enregistrement
-write.xlsx(df_indice, file = "resultats_indice_Gemini.xlsx", sheetName = 'prevision', rowNames = FALSE)
-print("Enregistré: resultats_indice_Gemini.xlsx \n")
+write.xlsx(df_indice, file = "Results/ECO_sentiment.xlsx", sheetName = 'prevision', rowNames = FALSE)
+print("Enregistré: ECO_sentiment.xlsx \n")
 
 t2 <- Sys.time()
 print(diff(range(t1, t2)))
-
-  
-
-
-
-
-
-
-
-
-
-
-
-
-

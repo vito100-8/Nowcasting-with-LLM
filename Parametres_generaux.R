@@ -27,6 +27,7 @@ n_repro <- 10  # Nombre de prévisions générées par date
 #Dates utilisées
 dates <- read_xlsx(here("dates_prev.xlsx")) #possible aussi de prendre df_date (dates <- df_date)
 dates2 <- read_xlsx(here("dates_prev_2020complet.xlsx"))  # en incluant des dates fictives pour année 2020
+dates3 <- read_xlsx(here("dates_prev_2010_2020complet.xlsx"))  # en incluant des dates fictives pour année 2020
 
 # API Key (pour ellmer on utilise API_KEY_GEMINI)
 cle_API <- Sys.getenv("API_KEY_GEMINI")
