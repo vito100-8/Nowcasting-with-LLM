@@ -213,3 +213,61 @@ MAE_Mois_3 = c(
 
 results_comparison_final <- results_comparison |>
   arrange(RMSE_Mois_3)
+
+
+
+
+##############################################
+#Correction
+#############################################
+
+
+# Configuration
+y_target    <- pib$PIB_PR
+dates       <- pib$dates
+d_start     <- as.Date("2020-01-01")
+d_end       <- as.Date("2021-12-31")
+window      <- 8
+mes_modeles <- list(BDF = BDF_Text_def, ISMA = df_ISMA_prev) 
+
+# Exécuter les modèles 
+
+## Moyenne Simple
+res_avg <- simple_avg_month_v2(mes_modeles)
+res_avg<- res_avg[(window + 1): 43,]
+
+## Inverse MSE 
+out_inv <- rolling_inversed_weight_month_v2(y_target, mes_modeles, dates, d_start, d_end, window)
+res_inv <- out_inv$nowcast
+
+## Granger-Ramanathan 
+out_gr <- gr_rolling_month_v2(y_target, mes_modeles, dates, d_start, d_end, window)
+
+res_gr  <- out_gr$forecast_comb
+
+# CalculMAE/RMSE
+
+## Fonction utilitaire pour calculer les erreurs
+calc_errors <- function(obs, preds) {
+  err <- preds - obs
+  c(MAE = mean(abs(err)), RMSE = sqrt(mean(err^2)))
+}
+metrics_list <- list()
+
+  
+for (j in 1:3) {
+  col_name <- paste0("Mois_", j)
+  df_eval <- data.frame(
+    Obs   = y_target[(window + 1): 43],
+    BDF   = mes_modeles$BDF[(window + 1): 43, j],
+    ISMA = mes_modeles$ISMA[(window + 1): 43, j],
+    AVG   = res_avg[, j],
+    INV   = res_inv[, j],
+    GR    = res_gr[, j]
+  )
+  
+  df_eval <- na.omit(df_eval)
+  res_horizon <- sapply(df_eval[, -1], function(preds) calc_errors(df_eval$Obs, preds))
+  metrics_list[[col_name]] <- res_horizon
+}
+
