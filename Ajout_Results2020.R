@@ -64,19 +64,6 @@ write.xlsx(df_final_INSEE, file = "Final_Results/INSEE_Text_2020.xlsx",
 
 
 #============================================
-# Correction BDF_sentiment
-df_BDF <- read_excel('Results/BDF_sentiment.xlsx')   #1
-
-# remplace les dates communes de 2020 et ajoute les dates manquantes
-df_final_BDF <- df_BDF %>%
-  rows_upsert(df_BDF_2020, by = "Date") %>%
-  arrange(Date)
-
-write.xlsx(df_final_BDF, file = "Final_Results/BDF_sentiment_2020.xlsx", 
-           sheetName = 'prevision', rowNames = FALSE)  #3
-
-
-#============================================
 # Correction BDF_text_FR et INSEE_text_FR
 df_BDF <- read_excel('Results/BDF_text_FR.xlsx')   #1
 df_INSEE <- read_excel('Results/INSEE_text_FR.xlsx')   #2
