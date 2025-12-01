@@ -536,24 +536,36 @@ gr_rolling <- function(y, forecasts, rolling_window) {
 
 #  Fonction moyenne arithmétique
 
-weight_avg_month <- function(pred_1, pred_2) {
-  pred_1 <- as.data.frame(pred_1)
-  pred_2 <- as.data.frame(pred_2)
+simple_avg_month_v2 <- function(models) {
   
-  # Initialisation du DF 
-  n <- nrow(pred_1)
-  avg_forecasts <- data.frame(matrix(NA, nrow = n, ncol = 3))
-  colnames(avg_forecasts) <- c("Mois_1", "Mois_2", "Mois_3")
+  n_models <- length(models)
+  n_rows <- nrow(models[[1]])
   
-  # calcul colonne par colonne
-  for (j in 1:3) {
-    comb_data <- cbind(pred_1[, j], pred_2[, j])
-    # Moyenne ligne par ligne
-    avg_forecasts[, j] <- rowMeans(comb_data, na.rm = TRUE)
+  #Modèles doivent avoir la même taille
+  for (k in 1:n_models) {
+    if (nrow(models[[k]]) != n_rows) stop(paste("Le modèle", k, "n'a pas le même nombre de lignes."))
   }
   
-  return(avg_forecasts)
+  # df de sortie
+  avg_forecasts <- data.frame(matrix(NA_real_, nrow = n_rows, ncol = 3))
+  colnames(avg_forecasts) <- c("Mois_1", "Mois_2", "Mois_3")
+  
+
+  for (j in 1:3) {
+    #
+    preds_mat <- do.call(cbind, lapply(models, function(df) df[, j]))
+    
+    #Moyenne ligne par ligne
+    avg_forecasts[, j] <- rowMeans(preds_mat, na.rm = TRUE)
+  }
+  
+  # Nettoyage pour ne pas voir des NA en bas du tableau qd on affiche
+  final_nowcast <- na.omit(avg_forecasts)
+  attr(final_nowcast, "na.action") <- NULL
+  
+  return(final_nowcast)
 }
+
 
 # Fonction inverse des MSE
 
@@ -677,8 +689,7 @@ gr_rolling_month <- function(y, pred_1, pred_2, rolling_window) {
     for (i in rolling_window:n) {
       train_idx <- (i - rolling_window + 1):i
       
-      # A noter : Pour prévoir i, on entraine sur les données jusqu'à i 
-      # On suppose que y[i] n'est pas connu au moment de la prévision, mais pour calibrer les poids en in-sample on utilise l'historique.
+      # ERRREUR ICI ? : ON ENTRAINE JUSQUA LA DATE OU ON PREVOIT INCLUE
       
       # Données d'entrainement (historique jusqu'à i)
       df_train <- data.frame(
@@ -725,3 +736,184 @@ gr_rolling_month <- function(y, pred_1, pred_2, rolling_window) {
     weights = weights_list
   ))
 }
+
+
+
+
+
+
+
+###################################################################################
+# FORECAST COMB : MODELES TYPES ROLLING TRAITEMNT COVID
+##########################################################################
+
+rolling_inversed_weight_month_v2 <- function(y, model_list, dates, start_covid, end_covid, rolling_window) {
+  
+  #Vérif type et taille des inputs
+  if (!is.numeric(y)) stop("y doit être un vecteur numérique.")
+  n <- length(y)
+  n_models <- length(model_list)
+  
+  for (k in 1:n_models) {
+    if (nrow(model_list[[k]]) != n) stop(paste("Le modèle", k, "n'a pas le même nombre de lignes que y."))
+  }
+  
+  # Conversion dates 
+  dates <- as.Date(dates)
+  start_covid <- as.Date(start_covid)
+  end_covid <- as.Date(end_covid)
+  
+  # Date covid (true = date hors covid)
+  is_safe_date <- !(dates >= start_covid & dates <= end_covid)
+  
+  # 3 colonnes (mois 1 -3=) par modèles
+  nowcast_df <- data.frame(matrix(NA_real_, nrow = n, ncol = 3))
+  colnames(nowcast_df) <- c("Mois_1", "Mois_2", "Mois_3")
+  
+  weights_list <- list()
+  
+  #Boucle sur chaque mois
+  for (j in 1:3) {
+    
+    # matrice pour chaque modèle à un mois
+    preds_mat <- do.call(cbind, lapply(model_list, function(df) df[, j]))
+    colnames(preds_mat) <- paste0("Model_", 1:n_models)
+    
+    nowcast_vec <- rep(NA_real_, n)
+    
+    # Matrice pour stocker les poids 
+    weights_storage <- matrix(NA_real_, nrow = n, ncol = n_models)
+    colnames(weights_storage) <- colnames(preds_mat)
+    
+    #Rolling : on commence juste après la fenêtre
+    for (i in (rolling_window + 1):n) {
+      
+      
+      #on garde uniquement les dates non covid
+      past_indices <- 1:(i - 1)
+      valid_past_indices <- past_indices[is_safe_date[past_indices]]
+      
+      #Vérif si assez de dates
+      if (length(valid_past_indices) >= rolling_window) {
+        
+        # Prendre les dates les plus récentes ( de la taille window)
+        train_idx <- tail(valid_past_indices, rolling_window)
+        
+        # calcul des erreurs
+        
+        errors_mat <- preds_mat[train_idx, , drop = FALSE] - y[train_idx]
+        
+        # MSE pour chaque modèle 
+        mses <- colMeans(errors_mat^2, na.rm = TRUE)
+        
+        # Inverse MSE
+        w_raw <- 1 / mses
+        
+        # Si 0 ou inf
+        if (any(is.infinite(w_raw))) w_raw[is.infinite(w_raw)] <- 1e10 # si infini
+        if (all(is.na(w_raw))) w_raw <- rep(1, n_models) # si tout est NA
+        
+        # Normalisation
+        w_norm <- w_raw / sum(w_raw, na.rm = TRUE)
+        
+        #Prévision
+        preds_at_i <- preds_mat[i, ]
+        if (!any(is.na(preds_at_i)) && !any(is.na(w_norm))) {
+          nowcast_vec[i] <- sum(w_norm * preds_at_i)
+          weights_storage[i, ] <- w_norm
+        }
+      }
+    }
+    
+    nowcast_df[, j] <- nowcast_vec
+    # Nettoyage des lignes vides
+    weights_list[[paste0("Mois_", j)]] <- na.omit(weights_storage)
+  }
+  
+  # Nettoyage final 
+  final_nowcast <- na.omit(nowcast_df)
+  attr(final_nowcast, "na.action") <- NULL
+  
+  return(list(
+    nowcast = final_nowcast,
+    weights = weights_list
+  ))
+}
+  
+
+
+
+
+gr_rolling_month_v2 <- function(y, model_list, dates, start_covid, end_covid, rolling_window) {
+    
+    # Vérif
+    if (!is.numeric(y)) stop("y doit être numérique.")
+    n <- length(y)
+    n_models <- length(model_list)
+    
+    dates <- as.Date(dates)
+    start_covid <- as.Date(start_covid)
+    end_covid <- as.Date(end_covid)
+    
+    # Filtre Covid pour le training
+    is_safe_date <- !(dates >= start_covid & dates <= end_covid)
+    
+    # Initialiser
+    nowcast_df <- data.frame(matrix(NA_real_, nrow = n, ncol = 3))
+    colnames(nowcast_df) <- c("Mois_1", "Mois_2", "Mois_3")
+    weights_list <- list()
+    
+    #Boucle pour chaque mois
+    for (j in 1:3) {
+      
+      # Matrice des prévisions brute pour le mois j
+      preds_mat <- do.call(cbind, lapply(model_list, function(df) df[, j]))
+      # Noms génériques pour la reg
+      colnames(preds_mat) <- paste0("X", 1:n_models)
+      
+      nowcast_vec <- rep(NA_real_, n)
+      
+      # Stockage poids (Intercept + N modèles)
+      weights_storage <- matrix(NA_real_, nrow = n, ncol = n_models + 1)
+      colnames(weights_storage) <- c("(Intercept)", colnames(preds_mat))
+      
+      #Rolling (même logique que le modèle mse)
+      for (i in (rolling_window + 1):n) {
+        
+        past_indices <- 1:(i - 1)
+        valid_past_indices <- past_indices[is_safe_date[past_indices]]
+        
+        if (length(valid_past_indices) >= rolling_window) {
+          train_idx <- tail(valid_past_indices, rolling_window)
+          
+          # DF Train : y et les modèles aux dates train_idx
+          df_train <- data.frame(y = y[train_idx], preds_mat[train_idx, , drop = FALSE])
+          
+          # DF Prev : données des modèles à la date i 
+          df_prev <- data.frame(preds_mat[i, , drop = FALSE])
+          
+          # Regression
+          formula_str <- paste("y ~", paste(colnames(preds_mat), collapse = " + ")) #formule générale (appremment plus robuste)
+          fit <- lm(as.formula(formula_str), data = df_train)
+          pred_val <- predict(fit, newdata = df_prev)
+          nowcast_vec[i] <- pred_val
+              
+            # Stockage des coefs
+             weights_storage[i, ] <- coef(fit)
+            
+  
+        }
+      }
+      
+      nowcast_df[, j] <- nowcast_vec
+      weights_list[[paste0("Mois_", j)]] <- na.omit(weights_storage)
+    }
+    
+    final_nowcast <- na.omit(nowcast_df)
+    attr(final_nowcast, "na.action") <- NULL
+    
+    return(list(
+      forecast_comb = final_nowcast,
+      weights = weights_list
+    ))
+  }
