@@ -54,7 +54,7 @@ if (covid_treatment == 0 ){
 ###############################
 
 #Date de début de training
-start_forecast_date <- as.Date("2015-02-01") #Peut être automatisé car là nécessaire de rentrer une date comprise dans df_PIB_Q$dates
+start_forecast_date <- as.Date("2010-02-01") #Peut être automatisé car là nécessaire de rentrer une date comprise dans df_PIB_Q$dates
 ## Poistion dans le dataset
 first_forecast_row <- which(df_PIB_ENQ$dates >= start_forecast_date)[1]
 
@@ -77,7 +77,7 @@ end_covid_period <- as.Date("2021-10-31")
 
 # Boucle de prévision : itérer jusqu'à la fin du dataset depuis la date de training choisie
 for (i in first_forecast_row:nrow(df_PIB_ENQ)) {
-  i_start <- ifelse(rolling == TRUE, i - window, 21)
+  i_start <- ifelse(rolling == TRUE, i - window, 1)
   # Date du forecast
   current_forecast_date <- df_PIB_ENQ$dates[i]
   
@@ -155,5 +155,5 @@ for (i in first_forecast_row:nrow(df_PIB_ENQ)) {
 #Df pour comparaison des résultats
 
 df_ISMA <- forecast_results
- 
+
 write.xlsx(df_ISMA, "Results_ISMA.xlsx")
