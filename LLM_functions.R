@@ -388,6 +388,15 @@ compute_errors <- function(df_model, df_obs) {
 # FONCTION LLM + ECONOMETRIE
 #################################
 
+
+## Fonction utilitaire pour calculer les erreurs
+calc_errors <- function(obs, preds) {
+  err <- preds - obs
+  c(MAE = mean(abs(err)), RMSE = sqrt(mean(err^2)))
+}
+metrics_list <- list()
+
+
 #Fonction moyenne arithmétique
 weight_avg <- function(pred_1, pred_2) {
   comb_data <- cbind(pred_1, pred_2)
@@ -843,7 +852,6 @@ rolling_inversed_weight_month_v2 <- function(y, model_list, dates, start_covid, 
 
 
 
-
 gr_rolling_month_v2 <- function(y, model_list, dates, start_covid, end_covid, rolling_window) {
     
     # Vérif
@@ -917,3 +925,141 @@ gr_rolling_month_v2 <- function(y, model_list, dates, start_covid, end_covid, ro
       weights = weights_list
     ))
   }
+
+
+
+
+
+
+
+
+#Test sans suppression covid
+####################################################################################################
+
+
+gr_rolling_month_standard <- function(y, model_list, rolling_window) {
+  
+
+  if (!is.numeric(y)) stop("y doit être numérique.")
+  n <- length(y)
+  n_models <- length(model_list)
+    nowcast_df <- data.frame(matrix(NA_real_, nrow = n, ncol = 3))
+  colnames(nowcast_df) <- c("Mois_1", "Mois_2", "Mois_3")
+  weights_list <- list()
+  
+
+  for (j in 1:3) {
+    
+    # Matrice Prévisions
+    preds_mat <- do.call(cbind, lapply(model_list, function(df) df[, j]))
+    colnames(preds_mat) <- paste0("X", 1:n_models)
+    
+    nowcast_vec <- rep(NA_real_, n)
+    
+    # Stockage poids
+    weights_storage <- matrix(NA_real_, nrow = n, ncol = n_models + 1)
+    colnames(weights_storage) <- c("(Intercept)", colnames(preds_mat))
+    
+    # Rolling
+    for (i in (rolling_window + 1):n) {
+      
+
+      train_idx <- (i - rolling_window):(i - 1)
+      
+      # Préparation Df
+      df_train <- data.frame(y = y[train_idx], preds_mat[train_idx, , drop = FALSE])
+      df_prev  <- data.frame(preds_mat[i, , drop = FALSE])
+      
+      # Régression
+      formula_str <- paste("y ~", paste(colnames(preds_mat), collapse = " + "))
+    
+        fit <- lm(as.formula(formula_str), data = df_train)
+    
+          # Prévision
+          pred_val <- predict(fit, newdata = df_prev)
+          nowcast_vec[i] <- pred_val
+          
+          # Stockage
+          weights_storage[i, ] <- coef(fit)
+    }
+    
+    nowcast_df[, j] <- nowcast_vec
+    weights_list[[paste0("Mois_", j)]] <- na.omit(weights_storage)
+  }
+  
+  final_nowcast <- na.omit(nowcast_df)
+  attr(final_nowcast, "na.action") <- NULL
+  
+  return(list(
+    forecast_comb = final_nowcast,
+    weights = weights_list
+  ))
+}
+
+
+
+
+rolling_inversed_weight_month_standard <- function(y, model_list, rolling_window) {
+  
+  n <- length(y)
+  n_models <- length(model_list)
+  
+  for (k in 1:n_models) {
+    if (nrow(model_list[[k]]) != n) stop(paste("Le modèle", k, "n'a pas le même nombre de lignes que y."))
+  }
+  
+  nowcast_df <- data.frame(matrix(NA_real_, nrow = n, ncol = 3))
+  colnames(nowcast_df) <- c("Mois_1", "Mois_2", "Mois_3")
+  
+  weights_list <- list()
+  
+  # Boucle mois
+  for (j in 1:3) {
+    
+    # Matrice des prévisions pour le mois j
+    preds_mat <- do.call(cbind, lapply(model_list, function(df) df[, j]))
+    colnames(preds_mat) <- paste0("Model_", 1:n_models)
+    
+    nowcast_vec <- rep(NA_real_, n)
+    weights_storage <- matrix(NA_real_, nrow = n, ncol = n_models)
+    colnames(weights_storage) <- colnames(preds_mat)
+    
+    # Boucle Rolling
+    for (i in (rolling_window + 1):n) {
+      
+      train_idx <- (i - rolling_window):(i - 1)
+      
+      
+      # Erreurs sur la fenêtre passée
+      errors_mat <- preds_mat[train_idx, , drop = FALSE] - y[train_idx]
+      
+      # MSE
+      mses <- colMeans(errors_mat^2, na.rm = TRUE)
+      
+      # Inverse MSE
+      w_raw <- 1 / mses
+      
+      # Normalisation
+      w_norm <- w_raw / sum(w_raw, na.rm = TRUE)
+      
+      # Prévision
+      preds_at_i <- preds_mat[i, ]
+      
+      if (!any(is.na(preds_at_i)) && !any(is.na(w_norm))) {
+        nowcast_vec[i] <- sum(w_norm * preds_at_i)
+        weights_storage[i, ] <- w_norm
+      }
+    }
+    
+    nowcast_df[, j] <- nowcast_vec
+    weights_list[[paste0("Mois_", j)]] <- na.omit(weights_storage)
+  }
+  
+  final_nowcast <- na.omit(nowcast_df)
+  attr(final_nowcast, "na.action") <- NULL
+  
+  return(list(
+    nowcast = final_nowcast,
+    weights = weights_list
+  ))
+}
