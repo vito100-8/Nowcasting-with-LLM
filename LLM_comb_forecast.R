@@ -83,18 +83,18 @@ INSEE_Text_def <- INSEE_Text_def[1:limit_index,]
 
 
 # Exécuter les modèles 
-mes_modeles <- list(INSEE = INSEE_Text_def,BDF = BDF_Text_def)
+mes_modeles_INSEE_BDF <- list(INSEE = INSEE_Text_def,BDF = BDF_Text_def)
 
 ## Moyenne Simple
-res_avg <- simple_avg_month_v2(mes_modeles)
+res_avg <- simple_avg_month_v2(mes_modeles_INSEE_BDF)
 res_avg<- res_avg[(window + 1): limit_index,]
 
 ## Inverse MSE 
-out_inv <- rolling_inversed_weight_month_v2(y_target, mes_modeles, dates, d_start, d_end, window)
+out_inv <- rolling_inversed_weight_month_v2(y_target, mes_modeles_INSEE_BDF, dates, d_start, d_end, window)
 res_inv <- out_inv$nowcast
 
 ## Granger-Ramanathan 
-out_gr <- gr_rolling_month_v2(y_target, mes_modeles, dates, d_start, d_end, window)
+out_gr <- gr_rolling_month_v2(y_target, mes_modeles_INSEE_BDF, dates, d_start, d_end, window)
 
 res_gr  <- out_gr$forecast_comb
 
@@ -106,8 +106,8 @@ for (j in 1:3) {
   col_name <- paste0("Mois_", j)
   df_eval <- data.frame(
     Obs   = y_target[(window + 1): limit_index],
-    BDF   = mes_modeles$BDF[(window + 1): limit_index, j],
-    INSEE = mes_modeles$INSEE[(window + 1): limit_index, j],
+    BDF   = mes_modeles_INSEE_BDF$BDF[(window + 1): limit_index, j],
+    INSEE = mes_modeles_INSEE_BDF$INSEE[(window + 1): limit_index, j],
     AVG   = res_avg[, j],
     INV   = res_inv[, j],
     GR    = res_gr[, j]
@@ -131,18 +131,18 @@ df_ISMA_prev <- df_ISMA |>
 
 
 # Configuration modèles
-mes_modeles <- list(BDF = BDF_Text_def, ISMA = df_ISMA_prev)
+mes_modeles_BDF_ISMA <- list(BDF = BDF_Text_def, ISMA = df_ISMA_prev)
 
 
 # Fonctions combinaisons
 
 # Moyenne Simple
-comb_avg <- simple_avg_month_v2(mes_modeles)
+comb_avg <- simple_avg_month_v2(mes_modeles_BDF_ISMA)
 
 # Inverse MSE 
 comb_MSE <- rolling_inversed_weight_month_v2(
   y = y_target, 
-  model_list = mes_modeles, 
+  model_list = mes_modeles_BDF_ISMA, 
   dates = dates, 
   start_covid = d_start, 
   end_covid = d_end, 
@@ -153,7 +153,7 @@ comb_MSE <- rolling_inversed_weight_month_v2(
 
 comb_gr <- gr_rolling_month_v2(
   y = y_target, 
-  model_list = mes_modeles, 
+  model_list = mes_modeles_BDF_ISMA, 
   dates = dates, 
   start_covid = d_start, 
   end_covid = d_end, 
@@ -176,8 +176,8 @@ for (j in 1:3) {
   
   df_eval <- data.frame(
     Obs            = y_target[(window + 1):limit_index],
-    BDF_Text       = mes_modeles$BDF[(window + 1):limit_index, j],
-    ISMA           = mes_modeles$ISMA[(window + 1):limit_index, j],
+    BDF_Text       = mes_modeles_BDF_ISMA$BDF[(window + 1):limit_index, j],
+    ISMA           = mes_modeles_BDF_ISMA$ISMA[(window + 1):limit_index, j],
     Moyenne_Simple = avg_aligned[, j],
     Inverse_MSE    = comb_MSE$nowcast[, j],
     Granger_Ram    = comb_gr$forecast_comb[, j]
@@ -211,12 +211,12 @@ all <- read_xlsx("Final_Results/BDF_all_2020.xlsx")
 text_FR <- read_xlsx("Final_Results/BDF_text_FR_2020.xlsx")
 
 #Traitemnt des données de chaque modèles
-mes_modeles <- list(Text = text, NoText = noText, Rolling = rolling, Text_FR = text_FR, All = all)
+mes_modeles_BDF <- list(Text = text, NoText = noText, Rolling = rolling, Text_FR = text_FR, All = all)
 
-for (k in 1:length(mes_modeles)){
+for (k in 1:length(mes_modeles_BDF)){
   
   # Nettoyage des données de chaque modèle
-  tmp <- mes_modeles[[k]] |>
+  tmp <- mes_modeles_BDF[[k]] |>
     rowwise() |>
     mutate(Median_forecast = median(c_across(starts_with("forecast")), na.rm = TRUE),
            .keep = "none") |>
@@ -229,21 +229,21 @@ for (k in 1:length(mes_modeles)){
       byrow = TRUE))
   
   # Ecraser anciens modèles par une version propre
-  mes_modeles[[k]] <- k_def[1:limit_index, ]
+  mes_modeles_BDF[[k]] <- k_def[1:limit_index, ]
 }
 
 # Exécuter les modèles 
 
 ## Moyenne Simple
-res_avg <- simple_avg_month_v2(mes_modeles)
+res_avg <- simple_avg_month_v2(mes_modeles_BDF)
 res_avg<- res_avg[(window + 1): limit_index,]
 
 ## Inverse MSE 
-out_inv <- rolling_inversed_weight_month_v2(y_target, mes_modeles, dates, d_start, d_end, window)
+out_inv <- rolling_inversed_weight_month_v2(y_target, mes_modeles_BDF, dates, d_start, d_end, window)
 res_inv <- out_inv$nowcast
 
 ## Granger-Ramanathan 
-out_gr <- gr_rolling_month_v2(y_target, mes_modeles, dates, d_start, d_end, window)
+out_gr <- gr_rolling_month_v2(y_target, mes_modeles_BDF, dates, d_start, d_end, window)
 
 res_gr  <- out_gr$forecast_comb
 
@@ -255,11 +255,11 @@ for (j in 1:3) {
   col_name <- paste0("Mois_", j)
   df_eval <- data.frame(
     Obs   = y_target[(window + 1): limit_index],
-    Text   = mes_modeles$Text[(window + 1): limit_index, j],
-    noText   = mes_modeles$NoText[(window + 1): limit_index, j],
-    Rolling   = mes_modeles$Rolling[(window + 1): limit_index, j],
-    All   = mes_modeles$All[(window + 1): limit_index, j],
-    Text_FR   = mes_modeles$Text_FR[(window + 1): limit_index, j],
+    Text   = mes_modeles_BDF$Text[(window + 1): limit_index, j],
+    noText   = mes_modeles_BDF$NoText[(window + 1): limit_index, j],
+    Rolling   = mes_modeles_BDF$Rolling[(window + 1): limit_index, j],
+    All   = mes_modeles_BDF$All[(window + 1): limit_index, j],
+    Text_FR   = mes_modeles_BDF$Text_FR[(window + 1): limit_index, j],
     AVG   = res_avg[, j],
     INV   = res_inv[, j],
     GR    = res_gr[, j]
@@ -283,12 +283,12 @@ all <- read_xlsx("Final_Results/INSEE_all_2020.xlsx")
 text_FR <- read_xlsx("Final_Results/INSEE_text_FR_2020.xlsx")
 
 #Traitemznt des données de chaque modèles
-mes_modeles <- list(Text = text, NoText = noText, Rolling = rolling, Text_FR = text_FR, All = all)
+mes_modeles_INSEE <- list(Text = text, NoText = noText, Rolling = rolling, Text_FR = text_FR, All = all)
 
-for (k in 1:length(mes_modeles)){
+for (k in 1:length(mes_modeles_INSEE)){
   
   # Nettoyage des données de chaque modèle
-  tmp <- mes_modeles[[k]] |>
+  tmp <- mes_modeles_INSEE[[k]] |>
     rowwise() |>
     mutate(Median_forecast = median(c_across(starts_with("forecast")), na.rm = TRUE),
            .keep = "none") |>
@@ -301,21 +301,21 @@ for (k in 1:length(mes_modeles)){
       byrow = TRUE))
   
   # Ecraser anciens modèles par une version propre
-  mes_modeles[[k]] <- k_def[1:limit_index, ]
+  mes_modeles_INSEE[[k]] <- k_def[1:limit_index, ]
 }
 
 # Exécuter les modèles 
 
 ## Moyenne Simple
-res_avg <- simple_avg_month_v2(mes_modeles)
+res_avg <- simple_avg_month_v2(mes_modeles_INSEE)
 res_avg<- res_avg[(window + 1): limit_index,]
 
 ## Inverse MSE 
-out_inv <- rolling_inversed_weight_month_v2(y_target, mes_modeles, dates, d_start, d_end, window)
+out_inv <- rolling_inversed_weight_month_v2(y_target, mes_modeles_INSEE, dates, d_start, d_end, window)
 res_inv <- out_inv$nowcast
 
 ## Granger-Ramanathan 
-out_gr <- gr_rolling_month_v2(y_target, mes_modeles, dates, d_start, d_end, window)
+out_gr <- gr_rolling_month_v2(y_target, mes_modeles_INSEE, dates, d_start, d_end, window)
 
 res_gr  <- out_gr$forecast_comb
 
@@ -327,11 +327,11 @@ for (j in 1:3) {
   col_name <- paste0("Mois_", j)
   df_eval <- data.frame(
     Obs   = y_target[(window + 1): limit_index],
-    Text   = mes_modeles$Text[(window + 1): limit_index, j],
-    noText   = mes_modeles$NoText[(window + 1): limit_index, j],
-    Rolling   = mes_modeles$Rolling[(window + 1): limit_index, j],
-    All   = mes_modeles$All[(window + 1): limit_index, j],
-    Text_FR   = mes_modeles$Text_FR[(window + 1): limit_index, j],
+    Text   = mes_modeles_INSEE$Text[(window + 1): limit_index, j],
+    noText   = mes_modeles_INSEE$NoText[(window + 1): limit_index, j],
+    Rolling   = mes_modeles_INSEE$Rolling[(window + 1): limit_index, j],
+    All   = mes_modeles_INSEE$All[(window + 1): limit_index, j],
+    Text_FR   = mes_modeles_INSEE$Text_FR[(window + 1): limit_index, j],
     AVG   = res_avg[, j],
     INV   = res_inv[, j],
     GR    = res_gr[, j]
@@ -360,13 +360,13 @@ all_BDF  <- read_xlsx("Final_Results/BDF_all_2020.xlsx")
 text_FR_BDF  <- read_xlsx("Final_Results/BDF_text_FR_2020.xlsx")
 
 #Traitemznt des données de chaque modèles
-mes_modeles <- list(Text_INSEE = text_INSEE, NoText_INSEE = noText_INSEE, Rolling_INSEE = rolling_INSEE, Text_FR_INSEE = text_FR_INSEE, All_INSEE = all_INSEE,
+mes_modeles_llm <- list(Text_INSEE = text_INSEE, NoText_INSEE = noText_INSEE, Rolling_INSEE = rolling_INSEE, Text_FR_INSEE = text_FR_INSEE, All_INSEE = all_INSEE,
                     Text_BDF  = text_BDF , NoText_BDF  = noText_BDF , Rolling_BDF  = rolling_BDF , Text_FR_BDF  = text_FR_BDF , All_BDF  = all_BDF )
 
-for (k in 1:length(mes_modeles)){
+for (k in 1:length(mes_modeles_llm)){
   
   # Nettoyage des données de chaque modèle
-  tmp <- mes_modeles[[k]] |>
+  tmp <- mes_modeles_llm[[k]] |>
     rowwise() |>
     mutate(Median_forecast = median(c_across(starts_with("forecast")), na.rm = TRUE),
            .keep = "none") |>
@@ -379,21 +379,21 @@ for (k in 1:length(mes_modeles)){
       byrow = TRUE))
   
   # Ecraser anciens modèles par une version propre
-  mes_modeles[[k]] <- k_def[1:limit_index, ]
+  mes_modeles_llm[[k]] <- k_def[1:limit_index, ]
 }
 
 # Exécuter les modèles 
 
 ## Moyenne Simple
-res_avg <- simple_avg_month_v2(mes_modeles)
+res_avg <- simple_avg_month_v2(mes_modeles_llm)
 res_avg<- res_avg[(window + 1): limit_index,]
 
 ## Inverse MSE 
-out_inv <- rolling_inversed_weight_month_v2(y_target, mes_modeles, dates, d_start, d_end, window)
+out_inv <- rolling_inversed_weight_month_v2(y_target, mes_modeles_llm, dates, d_start, d_end, window)
 res_inv <- out_inv$nowcast
 
 ## Granger-Ramanathan 
-out_gr <- gr_rolling_month_v2(y_target, mes_modeles, dates, d_start, d_end, window)
+out_gr <- gr_rolling_month_v2(y_target, mes_modeles_llm, dates, d_start, d_end, window)
 
 res_gr  <- out_gr$forecast_comb
 
@@ -408,16 +408,16 @@ for (j in 1:3) {
     AVG   = res_avg[, j],
     INV   = res_inv[, j],
     GR    = res_gr[, j],
-    Text_INSEE   = mes_modeles$Text_INSEE[(window + 1): limit_index, j],
-    noText_INSEE    = mes_modeles$NoText_INSEE[(window + 1): limit_index, j],
-    Rolling_INSEE    = mes_modeles$Rolling_INSEE[(window + 1): limit_index, j],
-    All_INSEE    = mes_modeles$All_INSEE[(window + 1): limit_index, j],
-    Text_FR_INSEE    = mes_modeles$Text_FR_INSEE[(window + 1): limit_index, j],
-    Text_BDF   = mes_modeles$Text_BDF[(window + 1): limit_index, j],
-    noText_BDF   = mes_modeles$NoText_BDF[(window + 1): limit_index, j],
-    Rolling_BDF   = mes_modeles$Rolling_BDF[(window + 1): limit_index, j],
-    All_BDF   = mes_modeles$All_BDF[(window + 1): limit_index, j],
-    Text_FR_BDF   = mes_modeles$Text_FR_BDF[(window + 1): limit_index, j]
+    Text_INSEE   = mes_modeles_llm$Text_INSEE[(window + 1): limit_index, j],
+    noText_INSEE    = mes_modeles_llm$NoText_INSEE[(window + 1): limit_index, j],
+    Rolling_INSEE    = mes_modeles_llm$Rolling_INSEE[(window + 1): limit_index, j],
+    All_INSEE    = mes_modeles_llm$All_INSEE[(window + 1): limit_index, j],
+    Text_FR_INSEE    = mes_modeles_llm$Text_FR_INSEE[(window + 1): limit_index, j],
+    Text_BDF   = mes_modeles_llm$Text_BDF[(window + 1): limit_index, j],
+    noText_BDF   = mes_modeles_llm$NoText_BDF[(window + 1): limit_index, j],
+    Rolling_BDF   = mes_modeles_llm$Rolling_BDF[(window + 1): limit_index, j],
+    All_BDF   = mes_modeles_llm$All_BDF[(window + 1): limit_index, j],
+    Text_FR_BDF   = mes_modeles_llm$Text_FR_BDF[(window + 1): limit_index, j]
     
   )
   
@@ -569,16 +569,16 @@ for (j in 1:3) {
     AR             = mes_modeles_eco$AR[id_eval, j],
     
     ## Modèles LLM
-    Text_INSEE     = mes_modeles$Text_INSEE[id_eval, j],
-    NoText_INSEE   = mes_modeles$NoText_INSEE[id_eval, j],
-    Rolling_INSEE  = mes_modeles$Rolling_INSEE[id_eval, j],
-    Text_FR_INSEE  = mes_modeles$Text_FR_INSEE[id_eval, j],
-    All_INSEE      = mes_modeles$All_INSEE[id_eval, j],
-    Text_BDF       = mes_modeles$Text_BDF[id_eval, j],
-    NoText_BDF     = mes_modeles$NoText_BDF[id_eval, j],
-    Rolling_BDF    = mes_modeles$Rolling_BDF[id_eval, j],
-    Text_FR_BDF    = mes_modeles$Text_FR_BDF[id_eval, j],
-    All_BDF        = mes_modeles$All_BDF[id_eval, j]
+    Text_INSEE     = mes_modeles_llm$Text_INSEE[id_eval, j],
+    NoText_INSEE   = mes_modeles_llm$NoText_INSEE[id_eval, j],
+    Rolling_INSEE  = mes_modeles_llm$Rolling_INSEE[id_eval, j],
+    Text_FR_INSEE  = mes_modeles_llm$Text_FR_INSEE[id_eval, j],
+    All_INSEE      = mes_modeles_llm$All_INSEE[id_eval, j],
+    Text_BDF       = mes_modeles_llm$Text_BDF[id_eval, j],
+    NoText_BDF     = mes_modeles_llm$NoText_BDF[id_eval, j],
+    Rolling_BDF    = mes_modeles_llm$Rolling_BDF[id_eval, j],
+    Text_FR_BDF    = mes_modeles_llm$Text_FR_BDF[id_eval, j],
+    All_BDF        = mes_modeles_llm$All_BDF[id_eval, j]
   )
   
   df_eval <- na.omit(df_eval)
