@@ -6,6 +6,7 @@ source("LLM_functions.R")
 source("Script_dates_prev.R")
 source("Parametres_generaux.R")
 dates <- dates2  # avec la pandémie
+#dates_aleat <- sample(as.Date(dates$`Date Prevision`),length(dates$`Date Prevision`))
 
 ######################
 #Paramètres spécifiques
@@ -116,6 +117,8 @@ results_BDF <- list()
 row_id_BDF <- 1 
 
 t1 <- Sys.time()
+
+#for (dt in dates_aleat) {
 for (dt in as.Date(dates$`Date Prevision`)) {
   current_date <- as.Date(dt) 
 
@@ -220,8 +223,10 @@ row_id_INSEE <- 1
 
 t1 <- Sys.time()
 
+#for (dt in dates_aleat) {
 for (dt in as.Date(dates$`Date Prevision`)) {
-  current_date <- as.Date(dt) 
+  current_date <- as.Date(dt)
+  prompt(current_date)
   
   # Trouver les bons pdf, le chemin d'accès et les concaténer
   emi_path <- get_last_insee_docs_by_type(current_date,"EMI",  document_folder_INSEE)
@@ -304,8 +309,8 @@ if (english==0){
 
 
 # Enregistrement
-write.xlsx(df_results_text_INSEE, file = "Results/INSEE_text_FR.xlsx", sheetName = 'prevision', rowNames = FALSE)
-print("Enregistré: Results/INSEE_text_FR.xlsx \n")
+write.xlsx(df_results_text_INSEE, file = "Results/INSEE_text.xlsx", sheetName = 'prevision', rowNames = FALSE)
+print("Enregistré: Results/INSEE_text.xlsx \n")
 
 t2 <- Sys.time()
 print(diff(range(t1, t2)))
