@@ -6,12 +6,13 @@ source("LLM_functions.R")
 source("Script_dates_prev.R")
 source("Parametres_generaux.R")
 dates <- dates2  # avec la pandémie
-#dates_aleat <- sample(as.Date(dates$`Date Prevision`),length(dates$`Date Prevision`))
+dates_aleat <- sample(as.Date(dates$`Date Prevision`),30)
 
 ######################
 #Paramètres spécifiques
 #######################
 
+cle_API <- "AIzaSyDHNckPH4cfNjcKfg-HuMVgIuuDpYvEL3w"
 
 #Systeme prompt
 sys_prompt <- system_prompt("Text")
@@ -118,8 +119,7 @@ row_id_BDF <- 1
 
 t1 <- Sys.time()
 
-#for (dt in dates_aleat) {
-for (dt in as.Date(dates$`Date Prevision`)) {
+for (dt in dates_aleat) {
   current_date <- as.Date(dt) 
 
   # Trouver le bon pdf et son path
@@ -200,8 +200,8 @@ if (english==0){
 # PB EN FR
 
 # Enregistrement
-write.xlsx(df_results_text_BDF, file = "Results/BDF_text_FR.xlsx", sheetName = 'prevision', rowNames = FALSE)
-print("Enregistré: Results/BDF_text_FR.xlsx \n")
+write.xlsx(df_results_text_BDF, file = "Results/BDF_text_aleat.xlsx", sheetName = 'prevision', rowNames = FALSE)
+print("Enregistré: Results/BDF_text_aleat.xlsx \n")
 
 t2 <- Sys.time()
 print(diff(range(t1, t2)))
@@ -223,11 +223,10 @@ row_id_INSEE <- 1
 
 t1 <- Sys.time()
 
-#for (dt in dates_aleat) {
-for (dt in as.Date(dates$`Date Prevision`)) {
+for (dt in dates_aleat) {
+
   current_date <- as.Date(dt)
-  prompt(current_date)
-  
+
   # Trouver les bons pdf, le chemin d'accès et les concaténer
   emi_path <- get_last_insee_docs_by_type(current_date,"EMI",  document_folder_INSEE)
   ser_path <- get_last_insee_docs_by_type(current_date, "SER",document_folder_INSEE)
@@ -309,8 +308,8 @@ if (english==0){
 
 
 # Enregistrement
-write.xlsx(df_results_text_INSEE, file = "Results/INSEE_text.xlsx", sheetName = 'prevision', rowNames = FALSE)
-print("Enregistré: Results/INSEE_text.xlsx \n")
+write.xlsx(df_results_text_INSEE, file = "Results/INSEE_text_aleat.xlsx", sheetName = 'prevision', rowNames = FALSE)
+print("Enregistré: Results/INSEE_text_aleat.xlsx \n")
 
 t2 <- Sys.time()
 print(diff(range(t1, t2)))
