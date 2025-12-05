@@ -12,7 +12,6 @@ dates_aleat <- sample(as.Date(dates$`Date Prevision`),30)
 #Paramètres spécifiques
 #######################
 
-cle_API <- "AIzaSyDHNckPH4cfNjcKfg-HuMVgIuuDpYvEL3w"
 
 #Systeme prompt
 sys_prompt <- system_prompt("Text")
