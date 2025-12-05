@@ -48,6 +48,8 @@ if (covid_treatment == 0 ){
   
 }
 
+df_PIB_ENQ <- df_PIB_ENQ |>
+  filter(dates > "1995-01-01")
 
 ###############################
 # Boucle prévision
