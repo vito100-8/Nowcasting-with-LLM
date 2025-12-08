@@ -5,6 +5,7 @@
 rm(list = ls())  
 source("Library_Nowcasting_LLM.R")
 source("LLM_functions.R")
+source("LLM_AR_climat.R")
 # source("Modèle_ISMA.R") 
 # source('LLM_AR.R')      
 
@@ -12,8 +13,12 @@ source("LLM_functions.R")
 # CONFIGURATION GLOBALE
 ################################################################################
 
+
+#OUVRIR FICHIER COVID
+pib <- read_xlsx("Data_BDF_INSEE.xlsx", sheet = "trimestriel")
+
 # Paramètres utilisateur
-remove_covid <- FALSE               
+remove_covid <- FALSE           
 cutoff_date  <- as.Date("2022-01-01") 
 start_date_common <- as.Date("2015-02-01") 
 
@@ -180,6 +185,14 @@ AR_def <- data.frame(
 mes_modeles_ECO_ALL <- list(ISMA=ISMA, MF3=MF3, AR=AR_def)
 
 
+
+
+#INDICE DE CLIMAT
+
+modèle_clim <- df_AR_climat_BDF |> select(BDF_IND_M1:BDF_IND_M3) |>
+  slice_tail(n=limit_index)|> 
+  as.data.frame()
+
 ################################################################################
 # EXECUTION DES COMBINAISONS
 ################################################################################
@@ -192,16 +205,20 @@ res_BDF_INSEE_Text <- run_eval("COMBINAISON : BDF Text + INSEE Text", mes_modele
 mes_modeles <- list(BDF = text_BDF, ISMA = ISMA)
 res_BDF_Text_ISMA <- run_eval("COMBINAISON : BDF Text + ISMA", mes_modeles, y_target, dates_vec, window, limit_index, remove_covid, cutoff_date)
 
-#  3 : TOUS LES MODELES BDF 
+# 3 : BDF Text + Climat BDF
+mes_modeles <- list(BDF= text_BDF, Clim = modèle_clim)
+res_BDF_Text_Clim <- run_eval("COMBINAISON : BDF Text + Climat Industrie BDF", mes_modeles, y_target, dates_vec, window, limit_index, remove_covid, cutoff_date)
+
+# 4  : TOUS LES MODELES BDF 
 res_BDF <- run_eval("COMBINAISON : TOUS MODELES BDF", mes_modeles_BDF_ALL, y_target, dates_vec, window, limit_index, remove_covid, cutoff_date)
 
-# 4 : TOUS LES MODELES INSEE 
+# 5 : TOUS LES MODELES INSEE 
 res_INSEE <- run_eval("COMBINAISON : TOUS MODELES INSEE", mes_modeles_INSEE_ALL, y_target, dates_vec, window, limit_index, remove_covid, cutoff_date)
 
-#  5 : TOUS LES MODELES ECONOMETRIQUES
+#  6 : TOUS LES MODELES ECONOMETRIQUES
 res_ECO <- run_eval("COMBINAISON : TOUS MODELES ECO", mes_modeles_ECO_ALL, y_target, dates_vec, window, limit_index, remove_covid, cutoff_date)
 
-# TOUS LES MODELES (GLOBAL) 
+#7 :  TOUS LES MODELES (GLOBAL) 
 names(mes_modeles_BDF_ALL) <- paste0("BDF_", names(mes_modeles_BDF_ALL))
 names(mes_modeles_INSEE_ALL) <- paste0("INSEE_", names(mes_modeles_INSEE_ALL))
 mes_modeles_all <- c(mes_modeles_BDF_ALL, mes_modeles_INSEE_ALL, mes_modeles_ECO_ALL)
