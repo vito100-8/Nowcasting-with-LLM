@@ -188,9 +188,8 @@ ggplot(df_synergy, aes(y = Scenario)) +
   scale_color_manual(values = c("Meilleur Modèle Seul" = "#E74C3C", "Meilleure Combinaison" = "#27AE60")) +
   
   labs(
-    title = "Apport de la Combinaison vs Meilleur Modèle Individuel",
-    subtitle = "Si le point Vert est à gauche du Rouge = La combinaison réduit l'erreur (Succès)",
-    x = "RMSE (Plus bas est mieux)",
+    title = "Comparaison combinaisons et modèles seuls",
+    x = "RMSE",
     y = "",
     color = ""
   ) +
@@ -202,7 +201,7 @@ ggplot(df_synergy, aes(y = Scenario)) +
   )
 
 # df calcul de gains
-print("--- GAINS DE PERFORMANCE PAR SCENARIO ---")
+print("GAINS DE PERFORMANCE PAR SCENARIO")
 print(df_synergy |> 
         select(Scenario, Mois, Name_Best_Single, Name_Best_Combo, Gain_Pct) |> 
         mutate(Gain_Pct = percent(Gain_Pct, accuracy = 0.01)), n =21)
