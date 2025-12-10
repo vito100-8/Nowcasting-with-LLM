@@ -12,14 +12,14 @@ source("Library_Nowcasting_LLM.R")
 # Modèles de combinaisons
 all_results_objects <- list(
   "BDF+INSEE"       = res_BDF_INSEE_Text,
-  "BDF+ISMA"        = res_BDF_Text_ISMA,
   "BDF+Climat"      = res_BDF_Text_Clim,
-  "Tous BDF"        = res_BDF,
-  "Tous INSEE"      = res_INSEE,
-  "Tous ECO"        = res_ECO,
-  "Tous LLM"        = res_LLM,
-  "GLOBAL (Tout)"   = res_ALL
+  "All BDF"         = res_BDF,
+  "All INSEE"       = res_INSEE,
+  "All ECO"         = res_ECO,
+  "All LLM"         = res_LLM,
+  "All models"      = res_ALL
 )
+
 
 # Fonction d'extraction pour chaque comb
 extract_data_clean <- function(scenario_name, res_obj) {
