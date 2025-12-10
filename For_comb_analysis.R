@@ -3,7 +3,7 @@
 
 source("Library_Nowcasting_LLM.R")
 
-library(forcats) # pour trier dans l'ordre croissant dans le graphique 
+
 
 ################################################################################
 # 1. CONSOLIDATION ET NETTOYAGE DES RÉSULTATS
@@ -17,6 +17,7 @@ all_results_objects <- list(
   "Tous BDF"        = res_BDF,
   "Tous INSEE"      = res_INSEE,
   "Tous ECO"        = res_ECO,
+  "Tous LLM"        = res_LLM,
   "GLOBAL (Tout)"   = res_ALL
 )
 
@@ -65,6 +66,9 @@ df_clean <- df_master |>
       #Si modèles seules avec noms répétitifs
       Scenario == "Tous BDF" & !grepl("^BDF_", Modele_Raw) ~ paste0("BDF_", Modele_Raw),
       Scenario == "Tous INSEE" & !grepl("^INSEE_", Modele_Raw) ~ paste0("INSEE_", Modele_Raw),
+      Scenario == "Tous LLM" & !grepl("^INSEE_", Modele_Raw) ~ paste0("INSEE_", Modele_Raw),
+      Scenario == "Tous LLM" & !grepl("^BDF", Modele_Raw) ~ paste0("BDF_", Modele_Raw),
+      
       
       #Expliciter le nom bdf
       Modele_Raw == "BDF" ~ "BDF_Text",
@@ -146,15 +150,17 @@ if ("P2" %in% unique(df_clean$Periode)) {
 
 # créer le df 
 df_synergy_prep <- df_master |>
-  rename(Modele = Modele_Raw) |> 
+  rename(Month = Mois) |>
   mutate(
+    Month = gsub("Mois_", "M", Month), 
+    Modele = Modele_Raw,
     Type = ifelse(Modele %in% c("AVG", "INV", "GR"), "Combinaison", "Modele_Seul")
   )
 
 # Calcul gains/pertes de la comb (période global par mois pour le graph, par trimestre pour le df)
 df_synergy <- df_synergy_prep |>
   filter(Periode == "Global") |> 
-  group_by(Scenario, Mois) |>
+  group_by(Scenario, Month) |>
   summarise(
     # Meilleur Modèle Seul 
     Best_Single_RMSE = min(RMSE[Type == "Modele_Seul"], na.rm = TRUE),
@@ -176,19 +182,19 @@ ggplot(df_synergy, aes(y = Scenario)) +
   geom_segment(aes(x = Best_Single_RMSE, xend = Best_Combo_RMSE, y = Scenario, yend = Scenario), color = "grey70") +
   
   # Point Rouge : Meilleur Modèle Seul
-  geom_point(aes(x = Best_Single_RMSE, color = "Meilleur Modèle Seul"), size = 3.5) +
+  geom_point(aes(x = Best_Single_RMSE, color = "Best Model"), size = 3.5) +
   
   # Point Vert : Meilleure Combinaison
-  geom_point(aes(x = Best_Combo_RMSE, color = "Meilleure Combinaison"), size = 3.5) +
+  geom_point(aes(x = Best_Combo_RMSE, color = "Best Combination"), size = 3.5) +
   
   # Séparation par Mois
-  facet_wrap(~Mois, scales = "free_x") +
+  facet_wrap(~Month, scales = "free_x") +
   
   #Légende
-  scale_color_manual(values = c("Meilleur Modèle Seul" = "#E74C3C", "Meilleure Combinaison" = "#27AE60")) +
+  scale_color_manual(values = c("Best Model" = "#E74C3C", "Best Combination" = "#27AE60")) +
   
   labs(
-    title = "Comparaison combinaisons et modèles seuls",
+    title = "Forecast vs Combination Forecast",
     x = "RMSE",
     y = "",
     color = ""
@@ -203,5 +209,5 @@ ggplot(df_synergy, aes(y = Scenario)) +
 # df calcul de gains
 print("GAINS DE PERFORMANCE PAR SCENARIO")
 print(df_synergy |> 
-        select(Scenario, Mois, Name_Best_Single, Name_Best_Combo, Gain_Pct) |> 
-        mutate(Gain_Pct = percent(Gain_Pct, accuracy = 0.01)), n =21)
+        select(Scenario, Month, Name_Best_Single, Name_Best_Combo, Gain_Pct) |> 
+        mutate(Gain_Pct = percent(Gain_Pct, accuracy = 0.01)), n =24)
