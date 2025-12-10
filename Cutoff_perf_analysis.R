@@ -123,27 +123,31 @@ analyze_cutoff_accuracy <- function(file_path, model_name, pib_data, cutoff_date
 
 # Liste des modèles
 files_list <- list(
-  "BDF_text" = "Final_results/BDF_text_2020.xlsx",
-  "BDF_noText" = "Final_results/BDF_noText_2020.xlsx",
-  "BDF_rolling" = "Final_results/BDF_rolling_text_2020.xlsx",
-  "BDF_just" = "Final_results/BDF_just_text_2020.xlsx",
-  "BDF_all" = "Final_results/BDF_all_2020.xlsx",
-  "BDF_excel" = "Final_results/BDF_excel_2020.xlsx",
-  "BDF_excel_error" = "Final_results/BDF_excel_error_2020.xlsx",
-  "BDF_text_FR" = "Final_results/BDF_text_FR_2020.xlsx",
-  "BDF_ECO_text" = "Final_results/BDF_ECO_text_2020.xlsx",
+  # --- Modèles BDF ---
   
-  "INSEE_text" = "Final_results/INSEE_text_2020.xlsx",
-  "INSEE_noText" = "Final_results/INSEE_noText_2020.xlsx",
-  "INSEE_rolling" = "Final_results/INSEE_rolling_text_2020.xlsx",
-  "INSEE_just" = "Final_results/INSEE_just_text_2020.xlsx",
-  "INSEE_all" = "Final_results/INSEE_all_2020.xlsx",
-  "INSEE_excel" =  "Final_results/INSEE_excel_2020.xlsx",
-  "INSEE_excel_error" = "Final_results/INSEE_excel_error_2020.xlsx",
-  "INSEE_text_FR" ="Final_results/INSEE_text_FR_2020.xlsx",
-  "INSEE_ECO_text" = "Final_results/INSEE_ECO_text_2020.xlsx",
+  "BDF_txt" ="Final_results/BDF_text_2020.xlsx",
+  "BDF_txtrol" ="Final_results/BDF_rolling_text_2020.xlsx", 
+  "BDF_txtO" ="Final_results/BDF_just_text_2020.xlsx", 
+  "BDF_txtTS" ="Final_results/BDF_all_2020.xlsx", 
+  "BDF_TS" ="Final_results/BDF_excel_2020.xlsx", 
+  "BDF_txtFR" ="Final_results/BDF_text_FR_2020.xlsx", 
   
-  "ECO_text" =  "Final_results/ECO_text_2020.xlsx"
+  
+  # --- Modèles INSEE ---
+  
+  "INSEE_txt" ="Final_results/INSEE_text_2020.xlsx",
+  "INSEE_notxt" ="Final_results/INSEE_noText_2020.xlsx", 
+  "INSEE_txtrol" ="Final_results/INSEE_rolling_text_2020.xlsx", 
+  "INSEE_txtO" ="Final_results/INSEE_just_text_2020.xlsx", 
+  "INSEE_txtTS" ="Final_results/INSEE_all_2020.xlsx", 
+  "INSEE_TS" ="Final_results/INSEE_excel_2020.xlsx", 
+  "INSEE_txtFR" ="Final_results/INSEE_text_FR_2020.xlsx", 
+  
+  
+  # --- Modèles ECO ---
+  
+  "all_txt" ="Final_results/ECO_text_2020.xlsx"
+  
 )
 
 # Boucle pour tout calculer
@@ -169,7 +173,7 @@ write.xlsx(final_cutoff_analysis, "Analysis_cutoff.xlsx")
 # Split periods
 ####################################################################
 
-cutoff_1 <- as.Date("2019-11-01")
+cutoff_1 <- as.Date("2020-02-01")
 
 ####################################
 #Fonction analyse période
@@ -263,27 +267,31 @@ analyze_period_accuracy <- function(file_path, model_name, pib_data, cutoff_date
 
 # Liste des fichiers
 files_list <- list(
-  "BDF_text" = "Final_results/BDF_text_2020.xlsx",
-  "BDF_noText" = "Final_results/BDF_noText_2020.xlsx",
-  "BDF_rolling" = "Final_results/BDF_rolling_text_2020.xlsx",
-  "BDF_just" = "Final_results/BDF_just_text_2020.xlsx",
-  "BDF_all" = "Final_results/BDF_all_2020.xlsx",
-  "BDF_excel" = "Final_results/BDF_excel_2020.xlsx",
-  "BDF_excel_error" = "Final_results/BDF_excel_error_2020.xlsx",
-  "BDF_text_FR" = "Final_results/BDF_text_FR_2020.xlsx",
-  "BDF_ECO_text" = "Final_results/BDF_ECO_text_2020.xlsx",
+  # --- Modèles BDF ---
+
   
-  "INSEE_text" = "Final_results/INSEE_text_2020.xlsx",
-  "INSEE_noText" = "Final_results/INSEE_noText_2020.xlsx",
-  "INSEE_rolling" = "Final_results/INSEE_rolling_text_2020.xlsx",
-  "INSEE_just" = "Final_results/INSEE_just_text_2020.xlsx",
-  "INSEE_all" = "Final_results/INSEE_all_2020.xlsx",
-  "INSEE_excel" =  "Final_results/INSEE_excel_2020.xlsx",
-  "INSEE_excel_error" = "Final_results/INSEE_excel_error_2020.xlsx",
-  "INSEE_text_FR" ="Final_results/INSEE_text_FR_2020.xlsx",
-  "INSEE_ECO_text" = "Final_results/INSEE_ECO_text_2020.xlsx",
+  "BDF_txt" ="Final_results/BDF_text_2020.xlsx",
+  "BDF_txtrol" ="Final_results/BDF_rolling_text_2020.xlsx", 
+  "BDF_txtO" ="Final_results/BDF_just_text_2020.xlsx", 
+  "BDF_txtTS" ="Final_results/BDF_all_2020.xlsx", 
+  "BDF_TS" ="Final_results/BDF_excel_2020.xlsx", 
+  "BDF_txtFR" ="Final_results/BDF_text_FR_2020.xlsx", 
   
-  "ECO_text" =  "Final_results/ECO_text_2020.xlsx"
+  
+  # --- Modèles INSEE ---
+  
+  "INSEE_txt" ="Final_results/INSEE_text_2020.xlsx",
+  "INSEE_notxt" ="Final_results/INSEE_noText_2020.xlsx", 
+  "INSEE_txtrol" ="Final_results/INSEE_rolling_text_2020.xlsx", 
+  "INSEE_txtO" ="Final_results/INSEE_just_text_2020.xlsx", 
+  "INSEE_txtTS" ="Final_results/INSEE_all_2020.xlsx", 
+  "INSEE_TS" ="Final_results/INSEE_excel_2020.xlsx", 
+  "INSEE_txtFR" ="Final_results/INSEE_text_FR_2020.xlsx", 
+  
+  
+  # --- Modèles ECO ---
+  
+  "all_txt" ="Final_results/ECO_text_2020.xlsx"
 )
 
 # Boucle pour tout calculer
@@ -389,27 +397,31 @@ analyze_period_monthly_accuracy <- function(file_path, model_name, pib_data, dum
 
 # Liste des fichiers
 files_list <- list(
-  "BDF_text" = "Final_results/BDF_text_2020.xlsx",
-  "BDF_noText" = "Final_results/BDF_noText_2020.xlsx",
-  "BDF_rolling" = "Final_results/BDF_rolling_text_2020.xlsx",
-  "BDF_just" = "Final_results/BDF_just_text_2020.xlsx",
-  "BDF_all" = "Final_results/BDF_all_2020.xlsx",
-  "BDF_excel" = "Final_results/BDF_excel_2020.xlsx",
-  "BDF_excel_error" = "Final_results/BDF_excel_error_2020.xlsx",
-  "BDF_text_FR" = "Final_results/BDF_text_FR_2020.xlsx",
-  "BDF_ECO_text" = "Final_results/BDF_ECO_text_2020.xlsx",
+  # --- Modèles BDF ---
   
-  "INSEE_text" = "Final_results/INSEE_text_2020.xlsx",
-  "INSEE_noText" = "Final_results/INSEE_noText_2020.xlsx",
-  "INSEE_rolling" = "Final_results/INSEE_rolling_text_2020.xlsx",
-  "INSEE_just" = "Final_results/INSEE_just_text_2020.xlsx",
-  "INSEE_all" = "Final_results/INSEE_all_2020.xlsx",
-  "INSEE_excel" =  "Final_results/INSEE_excel_2020.xlsx",
-  "INSEE_excel_error" = "Final_results/INSEE_excel_error_2020.xlsx",
-  "INSEE_text_FR" ="Final_results/INSEE_text_FR_2020.xlsx",
-  "INSEE_ECO_text" = "Final_results/INSEE_ECO_text_2020.xlsx",
-
-  "ECO_text" =  "Final_results/ECO_text_2020.xlsx"
+  "BDF_txt" ="Final_results/BDF_text_2020.xlsx",
+  "BDF_txtrol" ="Final_results/BDF_rolling_text_2020.xlsx", 
+  "BDF_txtO" ="Final_results/BDF_just_text_2020.xlsx", 
+  "BDF_txtTS" ="Final_results/BDF_all_2020.xlsx", 
+  "BDF_TS" ="Final_results/BDF_excel_2020.xlsx", 
+  "BDF_txtFR" ="Final_results/BDF_text_FR_2020.xlsx", 
+  
+  
+  # --- Modèles INSEE ---
+  
+  "INSEE_txt" ="Final_results/INSEE_text_2020.xlsx",
+  "INSEE_notxt" ="Final_results/INSEE_noText_2020.xlsx", 
+  "INSEE_txtrol" ="Final_results/INSEE_rolling_text_2020.xlsx", 
+ "INSEE_txtO" ="Final_results/INSEE_just_text_2020.xlsx", 
+  "INSEE_txtTS" ="Final_results/INSEE_all_2020.xlsx", 
+  "INSEE_TS" ="Final_results/INSEE_excel_2020.xlsx", 
+  "INSEE_txtFR" ="Final_results/INSEE_text_FR_2020.xlsx", 
+  
+  
+  # --- Modèles ECO ---
+  
+  "all_txt" ="Final_results/ECO_text_2020.xlsx"
+  
 )
 
 # Boucle pour tout calculer
