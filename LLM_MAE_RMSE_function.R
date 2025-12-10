@@ -1,6 +1,5 @@
 # Script pour calculer le MAE et RMSE des modèles
 
-rm(list = ls())  
 source("Library_Nowcasting_LLM.R")
 source("LLM_functions.R")
 source("Script_dates_prev.R")
@@ -38,7 +37,7 @@ covid <- 1
 filter_covid_dates <- function(df, dummy) {
   if (dummy == 0) {
     df |> 
-      filter(!(Date >= as.Date("2020-01-01") & Date <= as.Date("2021-01-31")))
+      filter(!(Date > "2020-01-01" & Date <= "2021-01-12"))
   } else {
     df
   }
@@ -101,33 +100,28 @@ process_model <- function(file_path, model_name, pib_data, covid_dummy) {
 
 # --- Modèles BDF ---
 
-metrics_BDF_text <- process_model("Final_results/BDF_text_2020.xlsx", "BDF_text", pib, covid)
-metrics_BDF_noText <- process_model("Final_results/BDF_noText_2020.xlsx", "BDF_noText", pib, covid)
-metrics_BDF_rolling_text <- process_model("Final_results/BDF_rolling_text_2020.xlsx", "BDF_rolling_text", pib, covid)
-metrics_BDF_just_text <- process_model("Final_results/BDF_just_text_2020.xlsx", "BDF_just_text", pib, covid)
-metrics_BDF_all <- process_model("Final_results/BDF_all_2020.xlsx", "BDF_all", pib, covid)
-metrics_BDF_excel <- process_model("Final_results/BDF_excel_2020.xlsx", "BDF_excel", pib, covid)
-metrics_BDF_excel_error <- process_model("Final_results/BDF_excel_error_2020.xlsx", "BDF_excel_error", pib, covid)
-metrics_BDF_text_FR <- process_model("Final_results/BDF_text_FR_2020.xlsx", "BDF_text_FR", pib, covid)
-metrics_BDF_ECO_text <- process_model("Final_results/BDF_ECO_text_2020.xlsx", "BDF_ECO_text", pib, covid)
+metrics_BDF_txt <- process_model("Final_results/BDF_text_2020.xlsx", "BDF_txt", pib, covid)
+metrics_BDF_txtrol <- process_model("Final_results/BDF_rolling_text_2020.xlsx", "BDF_txtrol", pib, covid)
+metrics_BDF_txtO <- process_model("Final_results/BDF_just_text_2020.xlsx", "BDF_txtO", pib, covid)
+metrics_BDF_txtTS <- process_model("Final_results/BDF_all_2020.xlsx", "BDF_txtTS", pib, covid)
+metrics_BDF_TS <- process_model("Final_results/BDF_excel_2020.xlsx", "BDF_TS", pib, covid)
+metrics_BDF_txtFR <- process_model("Final_results/BDF_text_FR_2020.xlsx", "BDF_txtFR", pib, covid)
 
 
 # --- Modèles INSEE ---
 
-metrics_INSEE_text <- process_model("Final_results/INSEE_text_2020.xlsx", "INSEE_text", pib, covid)
-metrics_INSEE_noText <- process_model("Final_results/INSEE_noText_2020.xlsx", "INSEE_noText", pib, covid)
-metrics_INSEE_rolling_text <- process_model("Final_results/INSEE_rolling_text_2020.xlsx", "INSEE_rolling_text", pib, covid)
-metrics_INSEE_just_text <- process_model("Final_results/INSEE_just_text_2020.xlsx", "INSEE_just_text", pib, covid)
-metrics_INSEE_all <- process_model("Final_results/INSEE_all_2020.xlsx", "INSEE_all", pib, covid)
-metrics_INSEE_excel <- process_model("Final_results/INSEE_excel_2020.xlsx", "INSEE_excel", pib, covid)
-metrics_INSEE_excel_error <- process_model("Final_results/INSEE_excel_error_2020.xlsx", "INSEE_excel_error", pib, covid)
-metrics_INSEE_text_FR <- process_model("Final_results/INSEE_text_FR_2020.xlsx", "INSEE_text_FR", pib, covid)
-metrics_INSEE_ECO_text <- process_model("Final_results/INSEE_ECO_text_2020.xlsx", "INSEE_ECO_text", pib, covid)
+metrics_INSEE_txt <- process_model("Final_results/INSEE_text_2020.xlsx", "INSEE_txt", pib, covid)
+metrics_INSEE_notxt <- process_model("Final_results/INSEE_noText_2020.xlsx", "INSEE_notxt", pib, covid)
+metrics_INSEE_txtrol <- process_model("Final_results/INSEE_rolling_text_2020.xlsx", "INSEE_txtrol", pib, covid)
+metrics_INSEE_txtO <- process_model("Final_results/INSEE_just_text_2020.xlsx", "INSEE_txtO", pib, covid)
+metrics_INSEE_txtTS <- process_model("Final_results/INSEE_all_2020.xlsx", "INSEE_txtTS", pib, covid)
+metrics_INSEE_TS <- process_model("Final_results/INSEE_excel_2020.xlsx", "INSEE_TS", pib, covid)
+metrics_INSEE_txtFR <- process_model("Final_results/INSEE_text_FR_2020.xlsx", "INSEE_txtFR", pib, covid)
 
 
 # --- Modèles ECO ---
 
-metrics_ECO_text <- process_model("Final_results/ECO_text_2020.xlsx", "ECO_text", pib, covid)
+metrics_all_txt <- process_model("Final_results/ECO_text_2020.xlsx", "ALL_txt", pib, covid)
 
 
 ################################################
@@ -136,14 +130,14 @@ metrics_ECO_text <- process_model("Final_results/ECO_text_2020.xlsx", "ECO_text"
 
 metrics_recap_final <- bind_rows(
   # BDF
-  metrics_BDF_text, metrics_BDF_noText, metrics_BDF_rolling_text, metrics_BDF_just_text, metrics_BDF_all, metrics_BDF_excel, metrics_BDF_excel_error,
-  metrics_BDF_text_FR, metrics_BDF_ECO_text,
+  metrics_BDF_txt, metrics_BDF_txtrol, metrics_BDF_txtO, metrics_BDF_txtTS, metrics_BDF_TS,
+  metrics_BDF_txtFR, 
   
   # INSEE
-  metrics_INSEE_text, metrics_INSEE_noText, metrics_INSEE_rolling_text, metrics_INSEE_just_text, metrics_INSEE_all, metrics_INSEE_excel, metrics_INSEE_excel_error,
-  metrics_INSEE_text_FR, metrics_INSEE_ECO_text,
+  metrics_INSEE_txt, metrics_INSEE_notxt, metrics_INSEE_txtrol, metrics_INSEE_txtO, metrics_INSEE_txtTS, metrics_INSEE_TS,
+  metrics_INSEE_txtFR, 
   
   # ECO
-  metrics_ECO_text
+  metrics_all_txt
 )
 
