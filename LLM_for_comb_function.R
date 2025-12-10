@@ -136,61 +136,51 @@ clean_llm_excel <- function(filename, limit) {
 }
 
 #BDF
-text_BDF      <- clean_llm_excel("Final_Results/BDF_text_2020.xlsx", limit_index)
-rolling_BDF   <- clean_llm_excel("Final_Results/BDF_rolling_text_2020.xlsx", limit_index)
-noText_BDF    <- clean_llm_excel("Final_Results/BDF_noText_2020.xlsx", limit_index)
-all_BDF       <- clean_llm_excel("Final_Results/BDF_all_2020.xlsx", limit_index)
-text_FR_BDF   <- clean_llm_excel("Final_Results/BDF_text_FR_2020.xlsx", limit_index)
+BDF_txt    <- clean_llm_excel("Final_Results/BDF_text_2020.xlsx", limit_index)
+BDF_txtrol  <- clean_llm_excel("Final_Results/BDF_rolling_text_2020.xlsx", limit_index)
+BDF_txtTS      <- clean_llm_excel("Final_Results/BDF_all_2020.xlsx", limit_index)
+BDF_txtFR  <- clean_llm_excel("Final_Results/BDF_text_FR_2020.xlsx", limit_index)
 
-mes_modeles_BDF_ALL <- list(Text=text_BDF, NoText=noText_BDF, Rolling=rolling_BDF, FR=text_FR_BDF, All=all_BDF)
+mes_modeles_BDF_ALL <- list(BDF_txt = BDF_txt, BDF_txtrol=BDF_txtrol, BDF_txtFR=BDF_txtFR, BDF_txtTS=BDF_txtTS)
 
 #INSEE
-text_INSEE    <- clean_llm_excel("Final_Results/INSEE_text_2020.xlsx", limit_index)
-rolling_INSEE <- clean_llm_excel("Final_Results/INSEE_rolling_text_2020.xlsx", limit_index)
-noText_INSEE  <- clean_llm_excel("Final_Results/INSEE_noText_2020.xlsx", limit_index)
-all_INSEE     <- clean_llm_excel("Final_Results/INSEE_all_2020.xlsx", limit_index)
-text_FR_INSEE <- clean_llm_excel("Final_Results/INSEE_text_FR_2020.xlsx", limit_index)
+INSEE_txt    <- clean_llm_excel("Final_Results/INSEE_text_2020.xlsx", limit_index)
+INSEE_txtrol <- clean_llm_excel("Final_Results/INSEE_rolling_text_2020.xlsx", limit_index)
+INSEE_txtTS    <- clean_llm_excel("Final_Results/INSEE_all_2020.xlsx", limit_index)
+INSEE_txtFR <- clean_llm_excel("Final_Results/INSEE_text_FR_2020.xlsx", limit_index)
 
-mes_modeles_INSEE_ALL <- list(Text=text_INSEE, NoText=noText_INSEE, Rolling=rolling_INSEE, FR=text_FR_INSEE, All=all_INSEE)
+mes_modeles_INSEE_ALL <- list(INSEE_txt = INSEE_txt, INSEE_txtrol=INSEE_txtrol, INSEE_txtFR=INSEE_txtFR, INSEE_txtTS=INSEE_txtTS)
 
-#ECONOMETRIE
+#ECONOMETRIE - Modèle Climat 
 
-# MF3
-MF3 <- read_xlsx("SYNTHESE_mb.xlsx", sheet = "ECONOMETRICS") |>
-  mutate(Mois_1=`MF_M1...8`, Mois_2=`MF_M2...9`, Mois_3=`MF_M3...10`, .keep="none") |> 
-  slice_head(n=limit_index) |>
-  mutate(across(everything(), as.numeric)) |> 
-  as.data.frame() 
+modèle_clim_BDF_IND <- df_AR_climat_BDF_IND |> 
+    select(BDF_IND_M1:BDF_IND_M3) |>
+   slice_tail(n=limit_index) |> 
+   as.data.frame()
 
-# ISMA
-if(!exists("df_ISMA")) df_ISMA <- read_xlsx("Results_ISMA.xlsx") 
-ISMA <- df_ISMA |> 
-  filter(dates >= start_date_common) |> 
-  select(forecast_M1:forecast_M3) |> 
-  slice_head(n=limit_index)
-colnames(ISMA) <- c("Mois_1", "Mois_2", "Mois_3")
-ISMA <- ISMA |> mutate(across(everything(), as.numeric)) |> as.data.frame()
+modèle_clim_INSEE_IND <- df_AR_climat_INSEE_IND |> 
+  select(INSEE_IND_M1:INSEE_IND_M3) |>
+  slice_tail(n=limit_index) |> 
+  as.data.frame()
 
-# AR
-if(!exists("df_AR")) df_AR <- read_xlsx("Results_AR.xlsx")
-df_AR_al <- df_AR |> 
-  filter(dates >= start_date_common) |> 
-  slice_head(n=limit_index)
-AR_def <- data.frame(
-  Mois_1=as.numeric(df_AR_al$forecast_AR), 
-  Mois_2=as.numeric(df_AR_al$forecast_AR), 
-  Mois_3=as.numeric(df_AR_al$forecast_AR)
-)
+modèle_clim_BDF_ALL <- df_AR_climat_BDF_ALL |> 
+  select(BDF_ALL_M1:BDF_ALL_M3) |>
+  slice_tail(n=limit_index) |> 
+  as.data.frame()
 
-mes_modeles_ECO_ALL <- list(ISMA=ISMA, MF3=MF3, AR=AR_def)
+modèle_clim_INSEE_ALL <- df_AR_climat_INSEE_ALL |> 
+  select(INSEE_ALL_M1:INSEE_ALL_M3) |>
+  slice_tail(n=limit_index) |> 
+  as.data.frame()
 
+modèle_clim_COMB_IND <- df_AR_climat_COMB_IND|> 
+  select(COMB_IND_M1:COMB_IND_M3) |>
+  slice_tail(n=limit_index) |> 
+  as.data.frame()
 
-
-
-#INDICE DE CLIMAT
-
-modèle_clim <- df_AR_climat_BDF |> select(BDF_IND_M1:BDF_IND_M3) |>
-  slice_tail(n=limit_index)|> 
+modèle_clim_COMB_ALL <- df_AR_climat_COMB_ALL |> 
+  select(COMB_ALL_M1:COMB_ALL_M3) |>
+  slice_tail(n=limit_index) |> 
   as.data.frame()
 
 ################################################################################
@@ -198,29 +188,30 @@ modèle_clim <- df_AR_climat_BDF |> select(BDF_IND_M1:BDF_IND_M3) |>
 ################################################################################
 
 #  1 : INSEE Text + BDF Text
-mes_modeles <- list(INSEE = text_INSEE, BDF = text_BDF)
+mes_modeles <- list(BDF_txt=BDF_txt, INSEE_txt = INSEE_txt)
 res_BDF_INSEE_Text <- run_eval("COMBINAISON : BDF Text + INSEE Text", mes_modeles, y_target, dates_vec, window, limit_index, remove_covid, cutoff_date)
 
-# 2 : BDF Text + ISMA 
-mes_modeles <- list(BDF = text_BDF, ISMA = ISMA)
-res_BDF_Text_ISMA <- run_eval("COMBINAISON : BDF Text + ISMA", mes_modeles, y_target, dates_vec, window, limit_index, remove_covid, cutoff_date)
-
-# 3 : BDF Text + Climat BDF
-mes_modeles <- list(BDF= text_BDF, Clim = modèle_clim)
+# 2 : BDF Text + Climat BDF
+mes_modeles <- list(BDF_txt=BDF_txt, Clim = modèle_clim_BDF_ALL)
 res_BDF_Text_Clim <- run_eval("COMBINAISON : BDF Text + Climat Industrie BDF", mes_modeles, y_target, dates_vec, window, limit_index, remove_covid, cutoff_date)
 
-# 4  : TOUS LES MODELES BDF 
+# 3  : TOUS LES MODELES BDF 
 res_BDF <- run_eval("COMBINAISON : TOUS MODELES BDF", mes_modeles_BDF_ALL, y_target, dates_vec, window, limit_index, remove_covid, cutoff_date)
 
-# 5 : TOUS LES MODELES INSEE 
+# 4 : TOUS LES MODELES INSEE 
 res_INSEE <- run_eval("COMBINAISON : TOUS MODELES INSEE", mes_modeles_INSEE_ALL, y_target, dates_vec, window, limit_index, remove_covid, cutoff_date)
 
-#  6 : TOUS LES MODELES ECONOMETRIQUES
-res_ECO <- run_eval("COMBINAISON : TOUS MODELES ECO", mes_modeles_ECO_ALL, y_target, dates_vec, window, limit_index, remove_covid, cutoff_date)
+#5 TOUS LES MODELES LLM
+mes_modeles_LLM <-  c(mes_modeles_BDF_ALL, mes_modeles_INSEE_ALL)
+res_LLM <- run_eval("COMBINAISON : TOUS MODELES LLM", mes_modeles_LLM, y_target, dates_vec, window, limit_index, remove_covid, cutoff_date)
+
+# 6 : TOUS LES MODELES ECONOMETRIQUES
+mes_modeles_ECO <- list(BDF_IND = modèle_clim_BDF_IND, BDF_ALL = modèle_clim_BDF_ALL,
+                     INSEE_ALL= modèle_clim_INSEE_ALL,INSEE_IND = modèle_clim_INSEE_IND,
+                     COMB_ALL = modèle_clim_COMB_ALL,COMB_IND = modèle_clim_COMB_IND)
+res_ECO <- run_eval("COMBINAISON : TOUS MODELES ECO", mes_modeles_ECO,  y_target, dates_vec, window, limit_index, remove_covid, cutoff_date)
 
 #7 :  TOUS LES MODELES (GLOBAL) 
-names(mes_modeles_BDF_ALL) <- paste0("BDF_", names(mes_modeles_BDF_ALL))
-names(mes_modeles_INSEE_ALL) <- paste0("INSEE_", names(mes_modeles_INSEE_ALL))
-mes_modeles_all <- c(mes_modeles_BDF_ALL, mes_modeles_INSEE_ALL, mes_modeles_ECO_ALL)
+mes_modeles_all <- c(mes_modeles_LLM, mes_modeles_ECO)
 
 res_ALL <- run_eval("COMBINAISON : TOUS LES MODELES (LLM + ECO)", mes_modeles_all, y_target, dates_vec, window, limit_index, remove_covid, cutoff_date)
