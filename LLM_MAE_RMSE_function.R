@@ -1,9 +1,7 @@
 # Script pour calculer le MAE et RMSE des modèles
 
 source("Library_Nowcasting_LLM.R")
-source("LLM_functions.R")
-source("Script_dates_prev.R")
-source("Parametres_generaux.R")
+
 
 ################################################
 # PRÉPARATION DES DONNÉES DE PIB
@@ -28,16 +26,12 @@ pib <- df_PIB |>
 # PARAMÈTRES GÉNÉRAUX
 ################################################
 
-# DUMMY COVID
-# 0 : Supprimer la période Covid 
-# 1 : Conserver la période Covid
-covid <- 1
 
 # Fonction pour enlever obs covid
 filter_covid_dates <- function(df, dummy) {
   if (dummy == 0) {
     df |> 
-      filter(!(Date > "2020-01-01" & Date <= "2021-01-12"))
+      filter(!(Date >= "2020-02-01" & Date < "2022-02-01"))
   } else {
     df
   }
@@ -98,46 +92,49 @@ process_model <- function(file_path, model_name, pib_data, covid_dummy) {
 # CALCUL MAE/RMSE PAR MODÈLE 
 ################################################
 
-# --- Modèles BDF ---
-
-metrics_BDF_txt <- process_model("Final_results/BDF_text_2020.xlsx", "BDF_txt", pib, covid)
-metrics_BDF_txtrol <- process_model("Final_results/BDF_rolling_text_2020.xlsx", "BDF_txtrol", pib, covid)
-metrics_BDF_txtO <- process_model("Final_results/BDF_just_text_2020.xlsx", "BDF_txtO", pib, covid)
-metrics_BDF_txtTS <- process_model("Final_results/BDF_all_2020.xlsx", "BDF_txtTS", pib, covid)
-metrics_BDF_TS <- process_model("Final_results/BDF_excel_2020.xlsx", "BDF_TS", pib, covid)
-metrics_BDF_txtFR <- process_model("Final_results/BDF_text_FR_2020.xlsx", "BDF_txtFR", pib, covid)
-
-
-# --- Modèles INSEE ---
-
-metrics_INSEE_txt <- process_model("Final_results/INSEE_text_2020.xlsx", "INSEE_txt", pib, covid)
-metrics_INSEE_notxt <- process_model("Final_results/INSEE_noText_2020.xlsx", "INSEE_notxt", pib, covid)
-metrics_INSEE_txtrol <- process_model("Final_results/INSEE_rolling_text_2020.xlsx", "INSEE_txtrol", pib, covid)
-metrics_INSEE_txtO <- process_model("Final_results/INSEE_just_text_2020.xlsx", "INSEE_txtO", pib, covid)
-metrics_INSEE_txtTS <- process_model("Final_results/INSEE_all_2020.xlsx", "INSEE_txtTS", pib, covid)
-metrics_INSEE_TS <- process_model("Final_results/INSEE_excel_2020.xlsx", "INSEE_TS", pib, covid)
-metrics_INSEE_txtFR <- process_model("Final_results/INSEE_text_FR_2020.xlsx", "INSEE_txtFR", pib, covid)
-
-
-# --- Modèles ECO ---
-
-metrics_all_txt <- process_model("Final_results/ECO_text_2020.xlsx", "ALL_txt", pib, covid)
-
+# Fonction pour calculer les metrics selon covid à retirer ou non
+calculate_all_models <- function(covid_dummy, pib_data) {
+  
+  # --- Modèles BDF ---
+  m_BDF_txt    <- process_model("Final_results/BDF_text_2020.xlsx", "BDF_txt", pib_data, covid_dummy)
+  m_BDF_txtrol <- process_model("Final_results/BDF_rolling_text_2020.xlsx", "BDF_txtrol", pib_data, covid_dummy)
+  m_BDF_txtO   <- process_model("Final_results/BDF_just_text_2020.xlsx", "BDF_txtO", pib_data, covid_dummy)
+  m_BDF_txtTS  <- process_model("Final_results/BDF_all_2020.xlsx", "BDF_txtTS", pib_data, covid_dummy)
+  m_BDF_TS     <- process_model("Final_results/BDF_excel_2020.xlsx", "BDF_TS", pib_data, covid_dummy)
+  m_BDF_txtFR  <- process_model("Final_results/BDF_text_FR_2020.xlsx", "BDF_txtFR", pib_data, covid_dummy)
+  
+  # --- Modèles INSEE ---
+  m_INSEE_txt    <- process_model("Final_results/INSEE_text_2020.xlsx", "INSEE_txt", pib_data, covid_dummy)
+  m_INSEE_txtrol <- process_model("Final_results/INSEE_rolling_text_2020.xlsx", "INSEE_txtrol", pib_data, covid_dummy)
+  m_INSEE_txtO   <- process_model("Final_results/INSEE_just_text_2020.xlsx", "INSEE_txtO", pib_data, covid_dummy)
+  m_INSEE_txtTS  <- process_model("Final_results/INSEE_all_2020.xlsx", "INSEE_txtTS", pib_data, covid_dummy)
+  m_INSEE_TS     <- process_model("Final_results/INSEE_excel_2020.xlsx", "INSEE_TS", pib_data, covid_dummy)
+  m_INSEE_txtFR  <- process_model("Final_results/INSEE_text_FR_2020.xlsx", "INSEE_txtFR", pib_data, covid_dummy)
+  
+  # --- Modèles ECO ---
+  m_ALL_txt <- process_model("Final_results/ECO_text_2020.xlsx", "ALL_txt", pib_data, covid_dummy)
+  
+  # --- Combinaison ---
+  metrics_recap <- bind_rows(
+    m_BDF_txt, m_BDF_txtrol, m_BDF_txtO, m_BDF_txtTS, m_BDF_TS, m_BDF_txtFR,
+    m_INSEE_txt, m_INSEE_txtrol, m_INSEE_txtO, m_INSEE_txtTS, m_INSEE_TS, m_INSEE_txtFR,
+    m_ALL_txt
+  )
+  
+  return(metrics_recap)
+}
 
 ################################################
-# COMBINAISON DES RÉSULTATS
+# EXÉCUTION ET SAUVEGARDE DES DEUX SCÉNARIOS
 ################################################
 
-metrics_recap_final <- bind_rows(
-  # BDF
-  metrics_BDF_txt, metrics_BDF_txtrol, metrics_BDF_txtO, metrics_BDF_txtTS, metrics_BDF_TS,
-  metrics_BDF_txtFR, 
-  
-  # INSEE
-  metrics_INSEE_txt, metrics_INSEE_notxt, metrics_INSEE_txtrol, metrics_INSEE_txtO, metrics_INSEE_txtTS, metrics_INSEE_TS,
-  metrics_INSEE_txtFR, 
-  
-  # ECO
-  metrics_all_txt
-)
+#With covid
+metrics_covid <- calculate_all_models(covid_dummy = 1, pib_data = pib)
+write.xlsx(metrics_covid, "metrics_covid.xlsx")
 
+#Without covid
+metrics_no_covid <- calculate_all_models(covid_dummy = 0, pib_data = pib)
+write.xlsx(metrics_no_covid, "metrics_no_covid.xlsx")
+
+#Si jamais appelé dans un autre script on donne la valeur avec le covid à la variable
+metrics_recap_final <- metrics_covid
