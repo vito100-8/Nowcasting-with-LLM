@@ -59,6 +59,8 @@ stats_both <- stats_both |>
     forecast_year = case_when(month == 1 ~ year - 1, TRUE ~ year)
   )
 
+stats_both <- stats_both |>
+  mutate(Mois_Label = str_replace(Mois_Label, "Mois ", "M"))
 
 ####################################
 # Stats descriptives
@@ -173,8 +175,10 @@ boxplot_err <- ggplot(err_join, aes(x = source, y = errors, fill = source)) +
 
 print(boxplot_err)
   
+err_join_nocovid <- err_join |>
+  filter(dates < "2020-02-01" | dates > "2022-01-01")
 #densité des erreurs
-density_error_prev <- ggplot(err_join, aes(x = errors, fill = source)) +
+density_error_prev <- ggplot(err_join_nocovid, aes(x = errors, fill = source)) +
   geom_density(alpha = 0.4) +
   facet_wrap(~ Mois_Label, scales = "free") + 
   labs(
@@ -215,6 +219,47 @@ line_err <- ggplot(err_join, aes(x = as.Date(Date), y = errors, color = source, 
   scale_y_continuous(limits = c(-0.5, 0.5))
 
 print(line_err)
+
+
+#Distribution niveau de confiance BDF vs INSEE
+
+density_conf <- ggplot(stats_both, aes(x = median_conf, fill = source)) +
+  geom_density(alpha = 0.4) +
+  facet_wrap(~ Mois_Label, scales = "free") + 
+  labs(
+    title = paste("Distribution of confidence level"),
+    subtitle = ("BDF_txt vs Insee_txt with the COVID period"), 
+    x = "Confidence level",
+    y = "Density",
+    fill = "Source"
+  ) +
+  theme_minimal() + 
+  scale_x_continuous(limits = c(0, 100))
+
+
+print(density_conf)
+
+stats_both_nocovid <- stats_both |>
+   filter(!(Date >= "2020-02-01" & Date < "2022-02-01" ))
+
+density_conf_nocovid <- ggplot(stats_both_nocovid, aes(x = median_conf, fill = source)) +
+  geom_density(alpha = 0.4) +
+  facet_wrap(~ Mois_Label, scales = "free") + 
+  labs(
+    title = paste("Distribution of confidence level"),
+    subtitle = ("BDF_txt vs Insee_txt without the COVID period"), 
+    x = "Confidence level",
+    y = "Density",
+    fill = "Source"
+  ) +
+  theme_minimal() + 
+  scale_x_continuous(limits = c(0, 100))
+
+print(density_conf_nocovid)
+
+
+
+
 
 ################################################################################
 # ANALYSE COMPARATIVE DES MODELES
@@ -259,9 +304,9 @@ df_rank_mean <- df_ranked |>
   ) |> 
   arrange(Mean_Rank_MAE)
 
-#####################################################################
+################################################################################
 #Classement meilleurs modèle (RMSE)
-###################
+#################################################################################
 ## Période entière
 ###################
 
@@ -316,29 +361,32 @@ rmse_table <- rmse_table |>
     .cols = starts_with("RMSE_Mois_") 
   )
 
-metrics_recap_final <- metrics_recap_final |>
+metrics_recap_final_2 <- metrics_recap_final |>
   select(Model,starts_with("RMSE")) |>
   rename_with(
     .fn = ~ gsub("RMSE_Mois_", "RMSE_M", .), 
     .cols = starts_with("RMSE_Mois_") 
   )
 
-metrics_final <- bind_rows(rmse_table, metrics_recap_final)
+metrics_final <- bind_rows(rmse_table, metrics_recap_final_2)
 
 
 df_metrics_all <- metrics_final |>
-  filter( Model %in% c("BDF_txt", "INSEE_txt", "ALL_txt", "ECO_ALL", "ECO_BDF", "ECO_INSEE", "all_txt"))|>
+  filter( Model %in% c("BDF_txt", "INSEE_txt", "ALL_txt", "all_txt", "ECO_ALL", "ECO_BDF", "ECO_INSEE"))|>
   pivot_longer(
     cols = starts_with("RMSE"),
     names_to = "Mois",
     values_to = "RMSE"
   ) |>
-  mutate(Type = case_when(
-    str_detect(Model, "^BDF")~ "LLM BDF",
-    str_detect(Model, "^INSEE")~ "LLM INSEE",
-    str_detect(Model, "^ECO")~ "ECONOMETRICS",
-    TRUE ~ "LLM ALL"
-  ))
+  mutate(
+    Model = ifelse(Model == "all_txt", "ALL_txt", Model),
+    Type = case_when(
+      str_detect(Model, "^BDF")~ "LLM BDF",
+      str_detect(Model, "^INSEE")~ "LLM INSEE",
+      str_detect(Model, "^ECO")~ "ECONOMETRICS",
+      TRUE ~ "LLM ALL"
+    )
+  )
 
 df_metrics_all <- df_metrics_all |>
   mutate(Mois = str_replace(Mois, "RMSE_", ""))
@@ -395,7 +443,7 @@ ggplot(df_col_top, aes(x = RMSE, y = Model_Ordered, fill = Type)) +
 df_eco <- read_xlsx("./Results_Eco_Climat.xlsx") |>
   filter(dates > "2015-01-01") 
 
-#2015-2020 :
+#2015-2019 :
 df_eco <- df_eco |>
   filter(dates < "2020-02-01")
 
@@ -451,30 +499,32 @@ rename_with(
 final_period_monthly_analysis <- read_xlsx("Analysis_monthy_period.xlsx")
 
 
-metrics_recap_final <- final_period_monthly_analysis |>
+metrics_recap_final_2 <- final_period_monthly_analysis |>
   select(Model,starts_with("RMSE_2015")) |>
   rename_with(
     .fn = ~ gsub("RMSE_2015_2019_M", "RMSE_M", .),
     .cols = starts_with("RMSE_2015_2019_M")
   )
 
-metrics_final <- bind_rows(rmse_table, metrics_recap_final)
+metrics_final <- bind_rows(rmse_table, metrics_recap_final_2)
 
 
 df_metrics_all <- metrics_final |>
-  filter( Model %in% c("BDF_txt", "INSEE_txt", "all_txt", "ECO_ALL", "ECO_BDF", "ECO_INSEE", "All_txt"))|>
+  filter( Model %in% c("BDF_txt", "INSEE_txt", "ECO_ALL", "ECO_BDF", "ECO_INSEE", "All_txt", "all_txt"))|>
   pivot_longer(
     cols = starts_with("RMSE"),
     names_to = "Mois",
     values_to = "RMSE"
   ) |>
-  mutate(Type = case_when(
-    str_detect(Model, "^BDF")~ "LLM BDF",
-    str_detect(Model, "^INSEE")~ "LLM INSEE",
-    str_detect(Model, "^ECO")~ "ECONOMETRICS",
-    TRUE ~ "LLM ALL"
-  ))
-
+  mutate(
+    Model = ifelse(Model == "all_txt", "ALL_txt", Model),
+    Type = case_when(
+      str_detect(Model, "^BDF")~ "LLM BDF",
+      str_detect(Model, "^INSEE")~ "LLM INSEE",
+      str_detect(Model, "^ECO")~ "ECONOMETRICS",
+      TRUE ~ "LLM ALL"
+    )
+  )
 df_metrics_all <- df_metrics_all |>
   mutate(Mois = str_replace(Mois, "RMSE_", ""))
 
@@ -579,30 +629,32 @@ rmse_table <- rmse_table |>
     .cols = starts_with("RMSE_Mois_")
   )
 
-metrics_recap_final <- final_period_monthly_analysis |>
+metrics_recap_final_2 <- final_period_monthly_analysis |>
   select(Model,starts_with("RMSE_2020")) |>
   rename_with(
     .fn = ~ gsub("RMSE_2020_2025_M", "RMSE_M", .),
     .cols = starts_with("RMSE_2020_2025_M")
   )
 
-metrics_final <- bind_rows(rmse_table, metrics_recap_final)
+metrics_final <- bind_rows(rmse_table, metrics_recap_final_2)
 
 
 df_metrics_all <- metrics_final |>
-  filter( Model %in% c("BDF_txt", "INSEE_txt", "ALL_txt", "ECO_ALL", "ECO_BDF", "ECO_INSEE", "all_txt"))|>
+  filter( Model %in% c("BDF_txt", "INSEE_txt", "ALL_txt", "all_txt", "ECO_ALL", "ECO_BDF", "ECO_INSEE"))|>
   pivot_longer(
     cols = starts_with("RMSE"),
     names_to = "Mois",
     values_to = "RMSE"
   ) |>
-  mutate(Type = case_when(
-    str_detect(Model, "^BDF")~ "LLM BDF",
-    str_detect(Model, "^INSEE")~ "LLM INSEE",
-    str_detect(Model, "^ECO")~ "ECONOMETRICS",
-   # str_detect(Model, "^all_txt")~ "LLM ALL",
-    TRUE ~ "LLM ALL"
-  ))
+  mutate(
+    Model = ifelse(Model == "all_txt", "ALL_txt", Model),
+    Type = case_when(
+      str_detect(Model, "^BDF")~ "LLM BDF",
+      str_detect(Model, "^INSEE")~ "LLM INSEE",
+      str_detect(Model, "^ECO")~ "ECONOMETRICS",
+      TRUE ~ "LLM ALL"
+    )
+  )
 
 df_metrics_all <- df_metrics_all |>
   mutate(Mois = str_replace(Mois, "RMSE_", ""))
@@ -739,17 +791,17 @@ rmse_Insee_ind <- df_eco_insee_ind |>
 
 rmse_table <- bind_rows(rmse_AR_2, rmse_BDF, rmse_INSEE, rmse_COMB, rmse_BDF_ind, rmse_Insee_ind) 
 
-rmse_table <- rmse_table |>
+
+metrics_recap_final_2 <- metrics_recap_final |>
+  select(Model,starts_with("RMSE"))
+
+metrics_final <- bind_rows(rmse_table, metrics_recap_final_2)
+
+metrics_final <- metrics_final |>
   rename_with(
     .fn = ~ gsub("RMSE_Mois_", "RMSE_M", .), 
     .cols = starts_with("RMSE_Mois_") 
-  )
-
-metrics_recap_final <- metrics_recap_final |>
-  select(Model,starts_with("RMSE"))
-
-metrics_final <- bind_rows(rmse_table, metrics_recap_final)
-
+)
 
 df_metrics_all <- metrics_final |>
   pivot_longer(
@@ -757,12 +809,15 @@ df_metrics_all <- metrics_final |>
     names_to = "Mois",
     values_to = "RMSE"
   ) |>
-  mutate(Type = case_when(
-    str_detect(Model, "^BDF")~ "LLM BDF",
-    str_detect(Model, "^INSEE")~ "LLM INSEE",
-    str_detect(Model, "^ECO")~ "ECONOMETRICS",
-    TRUE ~ "LLM ALL"
-  ))
+  mutate(
+    Model = ifelse(Model == "all_txt", "ALL_txt", Model),
+    Type = case_when(
+      str_detect(Model, "^BDF")~ "LLM BDF",
+      str_detect(Model, "^INSEE")~ "LLM INSEE",
+      str_detect(Model, "^ECO")~ "ECONOMETRICS",
+      TRUE ~ "LLM ALL"
+    )
+  )
 
 df_metrics_all <- df_metrics_all |>
   mutate(Mois = str_replace(Mois, "RMSE_", ""))
@@ -812,6 +867,141 @@ ggplot(df_col_top, aes(x = RMSE, y = Model_Ordered, fill = Type)) +
   ) +
   # pour voir le texte aux marges
   expand_limits(x = max(df_col_top$RMSE) * 1.15)
+
+############################################################
+#Robustness all models without covid
+#####################################################
+
+df_eco <- read_xlsx("./Results_Eco_Climat.xlsx") |>
+  filter(dates > "2015-01-01") |>
+  filter(dates < "2020-02-01" | dates > "2022-01-01")
+
+
+
+df_eco_bdf_no_covid <- df_eco |>
+  select(PIB_PR, BDF_ALL_M1:BDF_ALL_M3)
+df_eco_insee_no_covid <- df_eco |>
+  select(PIB_PR, INSEE_ALL_M1:INSEE_ALL_M3)
+df_eco_all_no_covid <- df_eco |>
+  select(PIB_PR, COMB_ALL_M1:COMB_ALL_M3)
+
+
+
+rmse_BDF <- df_eco_bdf_no_covid |>
+  na.omit() |>
+  summarise(
+    Model = "ECO_BDF",
+    RMSE_Mois_1 = sqrt(mean((PIB_PR - BDF_ALL_M1)^2)),
+    RMSE_Mois_2 = sqrt(mean((PIB_PR - BDF_ALL_M2)^2)),
+    RMSE_Mois_3 = sqrt(mean((PIB_PR - BDF_ALL_M3)^2))
+  )
+
+rmse_INSEE <- df_eco_insee_no_covid |>
+  na.omit() |>
+  summarise(
+    Model = "ECO_INSEE",
+    RMSE_Mois_1 = sqrt(mean((PIB_PR - INSEE_ALL_M1)^2)),
+    RMSE_Mois_2 = sqrt(mean((PIB_PR - INSEE_ALL_M2)^2)),
+    RMSE_Mois_3 = sqrt(mean((PIB_PR - INSEE_ALL_M3)^2))
+  )
+
+rmse_COMB <- df_eco_all_no_covid |>
+  na.omit() |>
+  summarise(
+    Model = "ECO_ALL",
+    RMSE_Mois_1 = sqrt(mean((PIB_PR - COMB_ALL_M1)^2)),
+    RMSE_Mois_2 = sqrt(mean((PIB_PR - COMB_ALL_M2)^2)),
+    RMSE_Mois_3 = sqrt(mean((PIB_PR - COMB_ALL_M3)^2))
+  )
+
+rmse_table_no_covid <- bind_rows( rmse_BDF, rmse_INSEE, rmse_COMB)
+
+# Renommer cols
+rmse_table_no_covid <- rmse_table_no_covid |>
+  rename_with(
+    .fn = ~ gsub("RMSE_Mois_", "RMSE_M", .),
+    .cols = starts_with("RMSE_Mois_")
+  )
+
+rmse_table <- rmse_table_no_covid 
+
+metrics_recap_final <- metrics_recap_final |>
+  select(Model,starts_with("RMSE"))
+
+metrics_final <- bind_rows(rmse_table, metrics_recap_final_2)
+
+
+df_metrics_all <- metrics_final |>
+  pivot_longer(
+    cols = starts_with("RMSE"),
+    names_to = "Mois",
+    values_to = "RMSE"
+  ) |>
+  mutate(
+    Model = ifelse(Model == "all_txt", "ALL_txt", Model),
+    Type = case_when(
+      str_detect(Model, "^BDF")~ "LLM BDF",
+      str_detect(Model, "^INSEE")~ "LLM INSEE",
+      str_detect(Model, "^ECO")~ "ECONOMETRICS",
+      TRUE ~ "LLM ALL"
+    )
+  )
+
+df_metrics_all <- df_metrics_all |>
+  mutate(Mois = str_replace(Mois, "RMSE_", ""))
+
+df_col_top <- df_metrics_all |>
+  group_by(Mois) |>
+  mutate(Model_Ordered = reorder_within(Model, -RMSE, Mois)) |>
+  ungroup()
+
+custom_colors <- c(
+  "LLM BDF" = "cornflowerblue",      
+  "LLM INSEE" = "cyan4",    
+  "LLM ALL" = "cyan",     
+  "ECONOMETRICS" = "coral1"  
+)
+
+
+ggplot(df_col_top, aes(x = RMSE, y = Model_Ordered, fill = Type)) +
+  geom_col(width = 0.7, alpha = 0.9) +
+  
+  # Affichage de la valeur exacte au bout de la barre
+  geom_text(aes(label = round(RMSE, 3)), hjust = -0.2, size = 3.5, fontface = "bold") +
+  
+  # Un facet par mois
+  facet_wrap(~Mois, scales = "free_y", ncol = 3) +
+  scale_y_reordered() +
+  scale_fill_manual(
+    values = custom_colors 
+  ) +
+  
+  
+  #Légendes
+  labs(
+    title = "Models ranking based on RMSE",
+    subtitle = "2015-2025 without the COVID period",
+    x = "RMSE",
+    y = "",
+    fill = "Model"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(face = "bold", size = 14),
+    strip.background = element_rect(fill = "#2C3E50", color = NA),
+    strip.text = element_text(color = "white", face = "bold", size = 10),
+    panel.grid.major.y = element_blank(),
+    legend.position = "top"
+  ) +
+  # pour voir le texte aux marges
+  expand_limits(x = max(df_col_top$RMSE) * 1.15)
+
+
+
+
+
+
+
 
 ######################################################################
 # Toute la période sans covid
@@ -872,7 +1062,7 @@ rmse_table_no_covid <- rmse_table_no_covid |>
 
 
 #Modèle LLM
-metrics_recap_final <- metrics_recap_final |>
+metrics_recap_final_2 <- metrics_recap_final |>
   select(Model,starts_with("RMSE")) |>
   rename_with(
     .fn = ~ gsub("RMSE_Mois_", "RMSE_M", .),
@@ -880,24 +1070,27 @@ metrics_recap_final <- metrics_recap_final |>
   )
 
 # Joindre
-metrics_final <- bind_rows(rmse_table_no_covid, metrics_recap_final)
+metrics_final <- bind_rows(rmse_table_no_covid, metrics_recap_final_2)
 
 
 #Préparation graph
 
 df_metrics_all <- metrics_final |>
-  filter( Model %in% c("BDF_txt", "INSEE_txt", "ALL_txt", "ECO_ALL", "ECO_BDF", "ECO_INSEE", "ECO_AR", "all_txt"))|>
+  filter( Model %in% c("BDF_txt", "INSEE_txt", "ALL_txt", "all_txt", "ECO_ALL", "ECO_BDF", "ECO_INSEE", "ECO_AR"))|>
   pivot_longer(
     cols = starts_with("RMSE"),
     names_to = "Mois",
     values_to = "RMSE"
   ) |>
-  mutate(Type = case_when(
-    str_detect(Model, "^BDF")~ "LLM BDF",
-    str_detect(Model, "^INSEE")~ "LLM INSEE",
-    str_detect(Model, "^ECO")~ "ECONOMETRICS",
-    TRUE ~ "LLM ALL"
-  ))
+  mutate(
+    Model = ifelse(Model == "all_txt", "ALL_txt", Model),
+    Type = case_when(
+      str_detect(Model, "^BDF")~ "LLM BDF",
+      str_detect(Model, "^INSEE")~ "LLM INSEE",
+      str_detect(Model, "^ECO")~ "ECONOMETRICS",
+      TRUE ~ "LLM ALL"
+  )
+)
 
 # Nettoyage de la variable Mois (RMSE_M1 -> M1)
 df_metrics_all <- df_metrics_all |>
@@ -950,7 +1143,6 @@ ggplot(df_col_top, aes(x = RMSE, y = Model_Ordered, fill = Type)) +
   expand_limits(x = max(df_col_top$RMSE) * 1.15)
 
 
-
 #######################################
 #SERIE TEMPORELLE : PIB REEL VS PREVU
 #######################################
@@ -974,7 +1166,7 @@ serie_temp <- left_join(stats_both, pib, by = c("forecast_year", "forecast_quart
   # Variables finales
   mutate(
     Line_Type = case_when(
-      Model == "PIB_PR" ~ "GDP",
+      Model == "PIB_PR" ~ "GDP growth",
       Model == "BDF" ~ "Nowcasts BDF",
       Model == "INSEE" ~ "Nowcasts INSEE",
       TRUE ~ "Autre"
@@ -1006,7 +1198,7 @@ ggplot(serie_temp, aes(y = Value, x = as.Date(Date.x), color = Line_Type)) +
   scale_color_manual(
     name = "Source", 
     values = c(
-      "GDP" = "black" ,
+      "GDP growth" = "black" ,
       "Nowcasts BDF" = "blue",
       "Nowcasts INSEE" = "red"   
            
@@ -1015,8 +1207,8 @@ ggplot(serie_temp, aes(y = Value, x = as.Date(Date.x), color = Line_Type)) +
   
   # Légendes
   labs(
-    title = "Forecasted vs Actual GDP",
-    y = "GDP (%)",
+    title = "Forecast vs Actual GDP growth",
+    y = "GDP growth (%)",
     x = "YEAR",
     color = "Source"
   ) +
