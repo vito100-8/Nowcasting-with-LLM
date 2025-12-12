@@ -2,8 +2,7 @@
 ################################################################################
 
 source("Library_Nowcasting_LLM.R")
-
-
+source("LLM_for_comb_function.R")
 
 ################################################################################
 # 1. CONSOLIDATION ET NETTOYAGE DES RÉSULTATS
@@ -103,6 +102,9 @@ plot_top10_ranking <- function(data, target_period, plot_title) {
       Unique_ID = paste0(Display_Name, "__", Mois), 
       Unique_ID = fct_reorder(Unique_ID, RMSE, .desc = TRUE)
     )
+  df_top10 <- df_top10 |>
+    mutate(Month = gsub("Mois_", "M", Mois),
+           Type =  ifelse(Type == "Combinaison", "Combination", "Single Model"))
   
   # Graphique
   ggplot(df_top10, aes(x = RMSE, y = Unique_ID, fill = Type)) +
@@ -112,14 +114,14 @@ plot_top10_ranking <- function(data, target_period, plot_title) {
     geom_text(aes(label = round(RMSE, 4)), hjust = -0.1, size = 3, fontface = "bold") +
     
     # Facet par Mois
-    facet_wrap(~Mois, scales = "free_y", ncol = 3) +
+    facet_wrap(~Month, scales = "free_y", ncol = 3) +
     
     #Détails légende
-    scale_fill_manual(values = c("Combinaison" = "#E67E22", "Modele_Seul" = "#34495E")) +
+    scale_fill_manual(values = c("Combination" = "#E67E22", "Single Model" = "#34495E")) +
     scale_y_discrete(labels = function(x) sub("__.*", "", x)) +
     scale_x_continuous(expand = expansion(mult = c(0, 0.15))) +
     labs(
-      title = paste("10 MEILLEURS MODÈLES (RMSE)" ),
+      title = paste("Models ranking (RMSE)" ),
       subtitle = plot_title,
       x = "RMSE",
       y = ""
@@ -136,12 +138,12 @@ plot_top10_ranking <- function(data, target_period, plot_title) {
 }
 
 # Période 2020-2025
-print(plot_top10_ranking(df_clean, "Global", "Période Globale"))
+print(plot_top10_ranking(df_clean, "Global", "2015-2025"))
 
 # Période Post-Covid (P2)
 
 if ("P2" %in% unique(df_clean$Periode)) {
-  print(plot_top10_ranking(df_clean, "P2", "Période Sans Covid (2022-2025)"))
+  print(plot_top10_ranking(df_clean, "P2", "2022-2025"))
 }
 
 ################################################################################
@@ -176,6 +178,8 @@ df_synergy <- df_synergy_prep |>
     # Calcul du gain/perte 
     Gain_Pct = ( Best_Single_RMSE - Best_Combo_RMSE ) / Best_Combo_RMSE,
   )
+
+
 
 # Graphique
 ggplot(df_synergy, aes(y = Scenario)) +
