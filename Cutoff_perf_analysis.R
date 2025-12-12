@@ -1,6 +1,5 @@
 # Statistiques Descriptives Resultats
 
-rm(list = ls())  
 source("Library_Nowcasting_LLM.R")
 
 
@@ -185,7 +184,7 @@ analyze_period_accuracy <- function(file_path, model_name, pib_data, cutoff_date
   
   if (dummy == 0){
     df_model <- df_model |>
-      filter(!(Date > "2020-01-01" & Date <= "2021-01-12"))
+      filter(!(Date >= "2020-02-01" & Date <= "2021-02-01"))
   }
   
   # B. Nettoyage 
@@ -323,7 +322,7 @@ analyze_period_monthly_accuracy <- function(file_path, model_name, pib_data, dum
   # Filtre COVID
   if (dummy_covid == 0){
     df_model <- df_model |>
-      filter(!(Date >= as.Date("2020-01-01") & Date <= as.Date("2021-01-31")))
+      filter(!(Date >= as.Date("2020-02-01") & Date < as.Date("2022-02-01")))
   }
   
   #Nettoyage
