@@ -6,7 +6,7 @@ source("LLM_functions.R")
 source("Script_dates_prev.R")
 source("Parametres_generaux.R")
 dates <- dates2  # avec la pandémie
-dates_aleat <- sample(as.Date(dates$`Date Prevision`),30)
+dates_aleat <- sample(as.Date(dates$`Date Prevision`),length(as.Date(dates$`Date Prevision`)))
 
 ######################
 #Paramètres spécifiques
