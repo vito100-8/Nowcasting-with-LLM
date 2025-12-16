@@ -83,7 +83,7 @@ if (is.na(first_forecast_row)) stop("Date de début non trouvée.")
 
 # Stockage des résultats
 ## 5 modèles 
-Results_Forecast <- tibble(
+Results_Forecast_Clim <- tibble(
   dates = as.Date(character()), 
   PIB_PR = double(),
   
@@ -211,7 +211,7 @@ for (i in first_forecast_row:nrow(df_model)) {
 
   # Stockage
   
-  Results_Forecast <- Results_Forecast |>
+  Results_Forecast_Clim <- Results_Forecast_Clim |>
     add_row(
       dates = current_forecast_date,
       PIB_PR = df_model$PIB_PR[i],
@@ -235,27 +235,27 @@ for (i in first_forecast_row:nrow(df_model)) {
 
 # Export
 # 1 BDF  - Industrie (Ind)
-df_AR_climat_BDF_IND <- Results_Forecast |>
+df_AR_climat_BDF_IND <- Results_Forecast_Clim |>
   select(dates, PIB_PR, starts_with("BDF_IND"))
 
 # 2 BDF - Tous les climats (All)
-df_AR_climat_BDF_ALL <- Results_Forecast |>
+df_AR_climat_BDF_ALL <- Results_Forecast_Clim |>
   select(dates, PIB_PR, starts_with("BDF_ALL"))
 
 # 3 INSEE - Industrie (Ind)
-df_AR_climat_INSEE_IND <- Results_Forecast |>
+df_AR_climat_INSEE_IND <- Results_Forecast_Clim |>
   select(dates, PIB_PR, starts_with("INSEE_IND"))
 
 # 4 INSEE - Tous les climats (All)
-df_AR_climat_INSEE_ALL <- Results_Forecast |>
+df_AR_climat_INSEE_ALL <- Results_Forecast_Clim |>
   select(dates, PIB_PR, starts_with("INSEE_ALL"))
 
 # 5 COMBINÉ - Industrie (Ind)
-df_AR_climat_COMB_IND <- Results_Forecast |>
+df_AR_climat_COMB_IND <- Results_Forecast_Clim |>
   select(dates, PIB_PR, starts_with("COMB_IND"))
 
 # 6 COMBINÉ - Tous les climats (All)
-df_AR_climat_COMB_ALL <- Results_Forecast |>
+df_AR_climat_COMB_ALL <- Results_Forecast_Clim |>
   select(dates, PIB_PR, starts_with("COMB_ALL"))
 
-write.xlsx(Results_Forecast, "./Results_Eco_Climat.xlsx")
+write.xlsx(Results_Forecast_Clim, "./Results_Eco_Climat.xlsx")
