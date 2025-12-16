@@ -1,4 +1,4 @@
-#### Script : Requêtes LLM (Gemini) avec PDF en pièce-jointe  ####
+#### Script : Requêtes LLM (Gemini) avec uniquement PDF en pièce-jointe comme information  ####
 
 rm(list = ls())  
 source("Library_Nowcasting_LLM.R")
@@ -6,15 +6,14 @@ source("LLM_functions.R")
 source("Script_dates_prev.R")
 source("Parametres_generaux.R")
 dates <- dates2  # avec la pandémie
-dates_aleat <- sample(as.Date(dates$`Date Prevision`),length(as.Date(dates$`Date Prevision`)))
 
-######################
+
+#######################
 #Paramètres spécifiques
 #######################
 
-
 #Systeme prompt
-sys_prompt <- system_prompt("Text")
+sys_prompt <- system_prompt("justText")
 
 #Initialisation LLM
 if (cle_API == "") stop("Clé API Gemini manquante. Ajoute API_KEY_GEMINI dans env/.Renviron")
@@ -28,6 +27,9 @@ chat_gemini <- chat_google_gemini( system_prompt = sys_prompt,
 document_folder_BDF <- "docEMC_clean"
 document_folder_INSEE <- "INSEE_Scrap"
 
+
+# Forecast regex pattern qui sera appelé dans la boucle pour parse
+forecast_confidence_pattern <- "([+-]?\\d+\\.?\\d*)\\s*\\(\\s*(\\d{1,3})\\s*\\)"
 
 ###################################
 # Prompts
@@ -60,16 +62,15 @@ if (english == 1) {
       ", giving a speech about the economic outlook of France. Today is ",
       format(d, "%d %B %Y"), ". ",
       "You will be provided with a document with information about the current state and recent past of the French economy. ",
-      "Using ONLY the information in that document and information that was available on or before ", format(d, "%d %B %Y"),
-      ", provide a numeric forecast (decimal percent with sign, e.g., +0.3) for French real GDP growth in the ", current_quarter, " quarter of ", y_prev,
+      "Using ONLY the information in that document and your reasoning skills and no external prior knowledge, provide a numeric forecast (decimal percent with sign, e.g., +0.3) for French real GDP growth in the ", current_quarter, " quarter of ", y_prev,
       " and a confidence level (integer 0–100). Output EXACTLY in this format on a single line (no extra text):\n",
       "<forecast> (<confidence>)\nExample: +0.3 (80)\n",
-      "Do NOT use any information published after ", format(d, "%d %B %Y"), "."
+      "Do NOT use any other information published after ", format(d, "%d %B %Y"), "."
     )
   }
   
 } else {
-  try(Sys.setlocale("LC_TIME", "fr_FR.UTF-8"), silent = TRUE)
+  try(Sys.setlocale("LC_TIME", "French"), silent = TRUE)
   
   current_boss <- function(type, d) {
     if (type == "BDF") return(BDF_current_boss(d))
@@ -93,8 +94,7 @@ if (english == 1) {
       ", qui prononce un discours sur les perspectives économiques de la France. Nous sommes le ",
       format(d, "%d %B %Y"), ". ",
       "Vous recevrez un document concernant la situation actuelle et passée de l'économie française. ",
-      "En utilisant UNIQUEMENT les informations contenues dans ce document et celles disponibles au plus tard le ", format(d, "%d %B %Y"),
-      ", fournissez une prévision numérique (pourcentage décimal avec signe, ex. +0.3) de la croissance du PIB réel français pour le ",
+      "En utilisant UNIQUEMENT les informations contenues dans ce document et votre raisonnement sans recourir à des connaissances externes ou préalables, fournissez une prévision numérique (pourcentage décimal avec signe, ex. +0.3) de la croissance du PIB réel français pour le ",
       trimestre_actuel, " trimestre ", y_prev,
       " et un niveau de confiance (entier 0-100). Renvoyez EXACTEMENT sur une seule ligne (aucun texte supplémentaire) :\n",
       "<prévision> (<confiance>)\nExemple : +0.3 (80)\n",
@@ -109,18 +109,16 @@ if (english == 1) {
 ###################################
 
 
-# Forecast regex pattern qui sera appelé dans la boucle pour parse
-forecast_confidence_pattern <- "([+-]?\\d+\\.?\\d*)\\s*\\(\\s*(\\d{1,3})\\s*\\)"
 
 # Creation de la list contenant les résultats
 results_BDF <- list()
 row_id_BDF <- 1 
 
 t1 <- Sys.time()
-
-for (dt in dates_aleat) {
+for (dt in as.Date(dates$`Date Prevision`)) {
   current_date <- as.Date(dt) 
-
+  print(current_date)
+  
   # Trouver le bon pdf et son path
   docname <- get_next_doc(current_date)
   pdf_path <- path_from_docname(docname, folder = document_folder_BDF)
@@ -143,17 +141,17 @@ for (dt in dates_aleat) {
   trimestre_index <- if (mois_index %in% c(1,11,12)) 4 else if (mois_index %in% 2:4) 1 else if (mois_index %in% 5:7) 2 else 3
   year_prev <- if (mois_index == 1 && trimestre_index == 4) year_current - 1 else year_current
   prompt_text <- prompt_template("BDF", current_date, trimestre_index ,
-                                     year_prev)
+                                 year_prev)
   
   # appel à Gemini en intégrant le document voulu
   out_list <- future_lapply(seq_len(n_repro), function(i) {
     tryCatch({
-    resp <- chat_gemini$chat(uploaded_doc, prompt_text)
-    return(resp)}, error = function(e) {
-      message("API error: ", conditionMessage(e))
-      return(NA_character_)
-    })
-
+      resp <- chat_gemini$chat(uploaded_doc, prompt_text)
+      return(resp)}, error = function(e) {
+        message("API error: ", conditionMessage(e))
+        return(NA_character_)
+      })
+    
   }, future.seed = TRUE)
   
   # Parse les résultats
@@ -187,20 +185,17 @@ for (dt in dates_aleat) {
   Sys.sleep(0.5)
 }
 
-# réunir les prévisions pour chaque date
-df_results_text_BDF <- do.call(rbind, results_BDF)
-
-# PB EN FR
-if (english==0){
-  df_results_text_BDF[] <- lapply(df_results_text_BDF, function(x) {
-  if(is.character(x)) iconv(x, from = "", to = "UTF-8") else x
-})
+# réunir les prévisions pour chaque date, prévoir une erreur
+if (length(results_BDF) > 0 ) {
+  df_results_just_text_BDF <- do.call(rbind, results_BDF)
+}else{
+  warning("La liste de résultats BDF est vide.")
 }
-# PB EN FR
+
 
 # Enregistrement
-write.xlsx(df_results_text_BDF, file = "Results/BDF_text_aleat.xlsx", sheetName = 'prevision', rowNames = FALSE)
-print("Enregistré: Results/BDF_text_aleat.xlsx \n")
+write.xlsx(df_results_just_text_BDF, file = "Results/BDF_just_text.xlsx", sheetName = 'prevision', rowNames = FALSE)
+print("Enregistré: Results/BDF_just_text.xlsx \n")
 
 t2 <- Sys.time()
 print(diff(range(t1, t2)))
@@ -210,11 +205,9 @@ print(diff(range(t1, t2)))
 #BOUCLE PRINCIPALE INSEE
 ########################
 
-#Création chemin d'accès
-dir.create("INSEE_Text_files_used", showWarnings = FALSE)
 
-# Forecast regex pattern qui sera appelé dans la boucle pour parse
-forecast_confidence_pattern <- "([+-]?\\d+\\.?\\d*)\\s*\\(\\s*(\\d{1,3})\\s*\\)"
+#Création chemin d'accès
+dir.create("INSEE_justText_files_used", showWarnings = FALSE)
 
 # Creation de la list contenant les résultats
 results_INSEE <- list()
@@ -222,10 +215,9 @@ row_id_INSEE <- 1
 
 t1 <- Sys.time()
 
-for (dt in dates_aleat) {
-
-  current_date <- as.Date(dt)
-
+for (dt in as.Date(dates$`Date Prevision`)[60:72]) {
+  current_date <- as.Date(dt) 
+  
   # Trouver les bons pdf, le chemin d'accès et les concaténer
   emi_path <- get_last_insee_docs_by_type(current_date,"EMI",  document_folder_INSEE)
   ser_path <- get_last_insee_docs_by_type(current_date, "SER",document_folder_INSEE)
@@ -233,7 +225,7 @@ for (dt in dates_aleat) {
   
   ##concaténation des documents dans le chemin d'accès spécifié
   all_insee_docs_to_combine <- c(emi_path, ser_path, bat_path)
-  combined_pdf_path <- file.path( "./INSEE_Text_files_used/", paste0("combined_INSEE_", format(current_date, "%Y%m%d"), ".pdf"))
+  combined_pdf_path <- file.path( "./INSEE_justText_files_used/", paste0("combined_INSEE_", format(current_date, "%Y%m%d"), ".pdf"))
   INSEE_path <- merge_pdfs(all_insee_docs_to_combine, combined_pdf_path)
   
   # Chargement du pdf concaténé souhaité
@@ -245,12 +237,13 @@ for (dt in dates_aleat) {
   
   # Initialisation des dates
   current_date <- as.Date(dt)
+  print(current_date)
   mois_index <- as.integer(format(current_date, "%m"))
   year_current <- as.integer(format(current_date, "%Y"))
   trimestre_index <- if (mois_index %in% c(1,11,12)) 4 else if (mois_index %in% 2:4) 1 else if (mois_index %in% 5:7) 2 else 3
   year_prev <- if (mois_index == 1 && trimestre_index == 4) year_current - 1 else year_current
   prompt_text <- prompt_template("INSEE", current_date, trimestre_index ,
-                                     year_prev)
+                                 year_prev)
   
   # appel à Gemini en intégrant le document voulu
   out_list <- future_lapply(seq_len(n_repro), function(i) {
@@ -294,21 +287,34 @@ for (dt in dates_aleat) {
   Sys.sleep(0.5)
 }
 
-# réunir les prévisions pour chaque date
-df_results_text_INSEE <- do.call(rbind, results_INSEE)
-
-# PB EN FR
-if (english==0){
-  df_results_text_INSEE[] <- lapply(df_results_text_INSEE, function(x) {
-    if(is.character(x)) iconv(x, from = "", to = "UTF-8") else x
-  })
-}
-# PB EN FR
+# réunir les prévisions pour chaque date, prévoir une erreur
+if (length(results_INSEE) > 0 ) {
+  df_results_just_text_INSEE <- do.call(rbind, results_INSEE)
+  erreur <- 0
+}else{
+  warning("La liste de résultats INSEE est vide.")
+  erreur <- 1
+  }
 
 
 # Enregistrement
-write.xlsx(df_results_text_INSEE, file = "Results/INSEE_text_aleat.xlsx", sheetName = 'prevision', rowNames = FALSE)
-print("Enregistré: Results/INSEE_text_aleat.xlsx \n")
+if (erreur == 0){
+  write.xlsx(df_results_just_text_INSEE, file = "Results/INSEE_just_text2020.xlsx", sheetName = 'prevision', rowNames = FALSE)
+  print("Enregistré: Results/INSEE_just_text.xlsx \n")
+}
+
 
 t2 <- Sys.time()
 print(diff(range(t1, t2)))
+
+
+
+
+
+
+
+
+
+
+
+
