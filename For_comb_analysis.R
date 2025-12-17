@@ -1,7 +1,6 @@
 # Résultats et analyse de résultats des combinaisons de forecasts
 ################################################################################
 
-source("Library_Nowcasting_LLM.R")
 source("LLM_for_comb_function.R")
 
 ################################################################################
@@ -56,7 +55,7 @@ df_master <- bind_rows(lapply(names(all_results_objects), function(x) extract_da
 df_clean <- df_master |>
   mutate(
     # Type de combinaison
-    Type = ifelse(Modele_Raw %in% c("AVG", "INV", "GR"), "Combinaison", "Modele_Seul"),
+    Type = ifelse(Modele_Raw %in% c("AVG", "INV", "GR", "CONF"), "Combinaison", "Modele_Seul"),
     
     # Standardisation des noms
     Display_Name = case_when(
@@ -94,7 +93,7 @@ plot_top10_ranking <- function(data, target_period, plot_title) {
   df_top10 <- data |>
     filter(Periode == target_period) |>
     group_by(Mois) |>
-    arrange(RMSE) |>       # Tri croissant 
+    arrange(RMSE) |>
     slice_head(n = 10) |> 
     ungroup() |> 
     mutate(
@@ -156,27 +155,30 @@ df_synergy_prep <- df_master |>
   mutate(
     Month = gsub("Mois_", "M", Month), 
     Modele = Modele_Raw,
-    Type = ifelse(Modele %in% c("AVG", "INV", "GR"), "Combinaison", "Modele_Seul")
+    Type = ifelse(Modele %in% c("AVG", "INV", "GR", "CONF"), "Combinaison", "Modele_Seul")
   )
 
-# Calcul gains/pertes de la comb (période global par mois pour le graph, par trimestre pour le df)
+# Calcul des meilleurs modèles et des modèles médians
 df_synergy <- df_synergy_prep |>
   filter(Periode == "Global") |> 
   group_by(Scenario, Month) |>
   summarise(
+    #RMSE Médian des modèles seuls 
+    Median_RMSE_Single = median(RMSE[Type == "Modele_Seul"], na.rm = TRUE),
+    # RMSE Médian des méthodes de combinaison 
+    Median_RMSE_Combo  = median(RMSE[Type == "Combinaison"], na.rm = TRUE),
     # Meilleur Modèle Seul 
     Best_Single_RMSE = min(RMSE[Type == "Modele_Seul"], na.rm = TRUE),
-    Name_Best_Single = Modele[Type == "Modele_Seul"][which.min(RMSE[Type == "Modele_Seul"])],
-    
+    `Best Model` = Modele[Type == "Modele_Seul"][which.min(RMSE[Type == "Modele_Seul"])],
     # Meilleure Combinaison 
     Best_Combo_RMSE  = min(RMSE[Type == "Combinaison"], na.rm = TRUE),
-    Name_Best_Combo  = Modele[Type == "Combinaison"][which.min(RMSE[Type == "Combinaison"])],
-    
+    `Best Combination`  = Modele[Type == "Combinaison"][which.min(RMSE[Type == "Combinaison"])],
     .groups = "drop"
   ) |>
   mutate(
-    # Calcul du gain/perte 
-    Gain_Pct = ( Best_Single_RMSE - Best_Combo_RMSE ) / Best_Combo_RMSE,
+    `RMSE/ RMSE` = Median_RMSE_Combo / Median_RMSE_Single,
+
+    `% Gain` = ( Best_Single_RMSE - Best_Combo_RMSE ) / Best_Combo_RMSE,
   )
 
 
@@ -211,7 +213,27 @@ ggplot(df_synergy, aes(y = Scenario)) +
   )
 
 # df calcul de gains
-print("GAINS DE PERFORMANCE PAR SCENARIO")
-print(df_synergy |> 
-        select(Scenario, Month, Name_Best_Single, Name_Best_Combo, Gain_Pct) |> 
-        mutate(Gain_Pct = percent(Gain_Pct, accuracy = 0.01)), n =24)
+df_export <- df_synergy |> 
+        select(Scenario, Month, `Best Model`, `Best Combination`,  `% Gain`, `RMSE/ RMSE`) |> 
+        mutate(`% Gain` = percent(`% Gain`, accuracy = 0.01))
+
+
+
+# Paramètres LaTeX
+caption_text <- "Accuracy gain/loss per scenario (RMSE)"
+label_text <- "tab:gain_scenario"
+
+latex_table <- df_export |>
+  kable(
+    format = "latex", 
+    caption = caption_text,
+    label = label_text,
+    booktabs = TRUE, 
+    align = c('l', 'l', 'l', 'l', 'c') 
+  ) |>
+  kable_styling(
+    full_width = FALSE 
+  )
+
+# Affichage du code LaTeX 
+cat(latex_table)
