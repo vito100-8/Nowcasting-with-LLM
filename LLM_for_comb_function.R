@@ -13,7 +13,7 @@ source("LLM_AR_climat.R")
 ################################################################################
 
 
-#OUVRIR FICHIER COVID
+#OUVRIR FICHIER PIB
 pib <- read_xlsx("Data_BDF_INSEE.xlsx", sheet = "trimestriel")
 
 # Paramètres utilisateur
