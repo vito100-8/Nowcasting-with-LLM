@@ -7,11 +7,11 @@ source("LLM_AR_climat.R")
 # COVID
 ###############
 
-COVID <- 0 # 1 = on supprime la période COVID; 0 = on garde
+COVID <- 1 # 1 = on supprime la période COVID; 0 = on garde
 if (COVID == 1){
   df_AR_Clim <- Results_Forecast_Clim |> 
     filter(dates < "2020-02-01" | dates >= "2022-02-01")
-  df_AR_Sent <- Resuls_Forecast_Sent |> 
+  df_AR_Sent <- Results_Forecast_Sent |> 
     filter(dates < "2020-02-01" | dates >= "2022-02-01")
 }else {
   df_AR_Clim <- Results_Forecast_Clim
@@ -305,3 +305,88 @@ econ_metrics_period <- bind_rows(
   metrics_Clim_comb_2_period
   
 )
+
+##################################################################################
+# Analyse comparative graphique
+#################################################################################
+
+# Code couleur
+CUSTOM_COLORS <- c(
+  "Sentiment" = "#2E86C1",
+  "Climate"   = "#E67E22"  
+)
+
+# Même type de fonction pour le graphique que dans comp_results_function
+plot_ranking_rmse_clean <- function(metrics_data, title_plot, subtitle_plot) {
+  
+  df_plot <- metrics_data |>
+    pivot_longer(cols = starts_with("RMSE"), names_to = "Mois", values_to = "RMSE") |>
+    mutate(
+      # Définition des deux catégorie
+      Category = ifelse(str_detect(Model, "Sentiment"), "Sentiment", "Climate"),
+      
+      # Nettoyer les noms
+      Model_Clean = Model,
+      Model_Clean = str_remove_all(Model_Clean, "(?i)sentiment|climate|climat"),
+      
+      # Uniformisation IND/ALL
+      Model_Clean = str_replace_all(Model_Clean, "(?i)ind", "IND"),
+      Model_Clean = str_replace_all(Model_Clean, "(?i)all", "ALL"),
+      
+      
+      # Label Mois
+      Mois = str_replace(Mois, "RMSE_", "")
+    ) |>
+    group_by(Mois) |>
+    mutate(Model_Ordered = reorder_within(Model_Clean, -RMSE, Mois)) |>
+    ungroup()
+  
+  #graphique
+  ggplot(df_plot, aes(x = RMSE, y = Model_Ordered, fill = Category)) +
+    geom_col(width = 0.75, alpha = 0.85) +
+    
+    # Paramètres valeurs affichées
+    geom_text(aes(label = round(RMSE, 3)), 
+              hjust = -0.15, size = 3.2, fontface = "bold", color = "grey20") +
+    
+    # Facet
+    facet_wrap(~Mois, scales = "free_y", ncol = 3) +
+    
+    scale_y_reordered() +
+    scale_fill_manual(values = CUSTOM_COLORS) +
+    
+    labs(
+      title = title_plot, 
+      subtitle = subtitle_plot, 
+      x = "RMSE", 
+      y = "", 
+      fill = "Model Type"
+    ) +
+    
+    theme_minimal() +
+    theme(
+      plot.title = element_text(face = "bold", size = 14),
+      strip.background = element_rect(fill = "#34495E", color = NA),
+      strip.text = element_text(color = "white", face = "bold"),
+      panel.grid.major.y = element_blank(),
+      panel.grid.minor = element_blank(),
+      legend.position = "bottom",
+      legend.box.margin = margin(t = 10)
+    ) +
+    expand_limits(x = max(df_plot$RMSE) * 1.2)
+}
+
+# Appel de la fonction selon dummy covid
+if (COVID == 0) {
+  plot_ranking_rmse_clean(
+    metrics_data = econ_metrics_table, 
+    title_plot = "Model ranking : Climate vs LLM sentiment ",
+    subtitle_plot = "2015-2025 including COVID period"
+  )
+} else {
+  plot_ranking_rmse_clean(
+    metrics_data = econ_metrics_table, 
+    title_plot = "Model ranking : Climate vs LLM sentiment ",
+    subtitle_plot = "2015-2025 excluding COVID period"
+  )
+}
