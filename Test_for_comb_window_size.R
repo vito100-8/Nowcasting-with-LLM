@@ -42,75 +42,64 @@ run_eval <- function(title, model_list, y_true, dates_eval,
                      window, limit, remove_covid, cutoff_date, 
                      use_conf = TRUE) {
   
+  #On évalue toujours de 2020 à 2025 
+  start_eval <- 21
+  idx_pib <- start_eval:limit 
+  dates_current <- dates_eval[idx_pib]
   
-  # On sépare les prévisions (cols 1-3) des niveaux confiances (cols 4-6)
-  
-  model_list_clean <- list() # Pour les prev
-  list_confidence  <- list() # Pour les  niveaux de conf
-  
+  # Préparation des list et configuration
+  model_list_clean <- list(); list_confidence  <- list()
   for(name in names(model_list)) {
     data <- model_list[[name]]
-    
     if(is.data.frame(data)) {
       model_list_clean[[name]] <- data[, 1:3]
-      
-      # Si on a 6 colonnes, on extrait la confiance
-      if(ncol(data) >= 6) {
-        list_confidence[[name]] <- data[, 4:6]
-      }
-    } else {
-      # Cas où c'est une matrice
-      model_list_clean[[name]] <- data
-    }
+      if(ncol(data) >= 6) list_confidence[[name]] <- data[, 4:6]
+    } else { model_list_clean[[name]] <- data }
   }
   
-  
-  ## Moyenne Simple (sur prévisions uniquement)
+  # Calcul combinaisons 
   res_avg <- simple_avg_month(model_list_clean)
-  res_avg_aligned <- res_avg[(window + 1): limit,]
+  res_avg_aligned <- res_avg[idx_pib, ]
   
-  ## Inverse MSE 
   out_inv <- rolling_inversed_weight_month(y_true, model_list_clean, dates_vec, d_start, d_end, window)
-  res_inv <- out_inv$nowcast
+  out_gr  <- gr_rolling_month(y_true, model_list_clean, dates_vec, d_start, d_end, window)
   
-  ## Granger-Ramanathan 
-  out_gr <- gr_rolling_month(y_true, model_list_clean, dates_vec, d_start, d_end, window)
-  res_gr  <- out_gr$forecast_comb
+  # shift des fonctions pour que les résultats soient tous sur la même fenêtre
+  shift <- start_eval - (window + 1)
   
-  ## Niveau de confiance
-  res_conf <- NULL
-  # Lancement ssi modèle LLM
+  res_inv_fixed <- out_inv$nowcast[(shift + 1):(shift + length(idx_pib)), ]
+  res_gr_fixed  <- out_gr$forecast_comb[(shift + 1):(shift + length(idx_pib)), ]
+  
+  res_conf_fixed <- NULL
   if(use_conf && length(list_confidence) > 0) {
     out_conf <- rolling_confidence_weight(model_list_clean, list_confidence)
-    res_conf <- out_conf[(window + 1): limit,]
+    res_conf_fixed <- out_conf[(shift + 1):(shift + length(idx_pib)), ]
   }
   
-  #Calcul MAE/RMSE
-  
-  idx_eval <- (window + 1):limit
-  dates_current <- dates_eval[idx_eval] 
-  
+  #  CALCUL MAE/RMSE
   metrics_Global <- list(); metrics_P1 <- list(); metrics_P2 <- list()
   
   for (j in 1:3) {
     col_name <- paste0("Mois_", j)
     
+    #création df
     df_temp <- data.frame(
-      Obs = as.numeric(y_true[idx_eval]),
+      Obs = as.numeric(y_true[idx_pib]),
       AVG = res_avg_aligned[, j],
-      INV = res_inv[, j],
-      GR  = res_gr[, j]
+      INV = res_inv_fixed[, j],
+      GR  = res_gr_fixed[, j]
     )
     
-    if(use_conf && !is.null(res_conf)){
-      df_temp$CONF <- res_conf[,j]
-    }
+    if(!is.null(res_conf_fixed)) df_temp$CONF <- res_conf_fixed[, j]
     
+    # Alignement des modèles individuels
     for(name in names(model_list_clean)) {
-      val <- if(is.data.frame(model_list_clean[[name]])) model_list_clean[[name]][idx_eval, j] else model_list_clean[[name]][idx_eval]
-      df_temp[[name]] <- as.numeric(val) 
+      val <- if(is.data.frame(model_list_clean[[name]])) model_list_clean[[name]][idx_pib, j] else model_list_clean[[name]][idx_pib]
+      df_temp[[name]] <- as.numeric(val)
     }
     
+
+    #Création des périodes globales et pré/post covid
     df_temp <- na.omit(df_temp)
     is_covid <- dates_current >= as.Date("2020-01-01") & dates_current <= as.Date("2021-12-31")
     is_pre   <- dates_current < cutoff_date
@@ -213,7 +202,7 @@ modèle_clim_COMB_ALL <- df_AR_climat_COMB_ALL |>
 #on transforme en fonction qui sera exécutée pour les deux tailles de fenêtres
 run_all_combinations <- function(win_size) {
   
-  
+ 
   # 1 : INSEE Text + BDF Text 
   res_BDF_INSEE_Text <- run_eval("BDF+INSEE", list(BDF_txt=BDF_txt, INSEE_txt=INSEE_txt), y_target, dates_vec, win_size, limit_index, remove_covid, cutoff_date, TRUE)
   
@@ -279,7 +268,7 @@ extract_rmse_summary <- function(res_list, window_label) {
     methods <- c("AVG", "INV", "GR")
     
     for(met in methods) {
-      val <- res_list[[scenario]]$Global$Mois_3["RMSE", met]
+      val <- res_list[[scenario]]$Global$Mois_1["RMSE", met] ## changer ici le mois voulu
       if(!is.null(val)) {
         df_summary <- rbind(df_summary, data.frame(
           Scenario = scenario,
