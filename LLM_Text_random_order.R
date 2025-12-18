@@ -27,18 +27,7 @@ test_random <- both_random |>
   left_join(both_txt, join_by("Date", "source")) |>
   arrange(Date)
 
-#############################
-# T test sur les moyennes
-#############################
-
-t.test(test_random$median_forecast.x, test_random$median_forecast.y)
-t.test(test_random$median_conf.x, test_random$median_conf.y)
-
-###################################
-#Analyse graphique 
-##################################
-
-#Densité prévisions (sans valeurs extrêmes)
+#Préparation des df
 df_comparaison <- test_random |>
   rename(
     Forecast_Random = median_forecast.x,
@@ -58,6 +47,19 @@ df_forecast <- df_comparaison |>
   mutate(Condition = str_remove(Condition, "Forecast_"))
 
 
+
+#############################
+# Test sur les moyennes
+#############################
+
+ks.test(df_comparaison$Forecast_Ordered, df_comparaison$Forecast_Random)
+
+
+###################################
+#Analyse graphique 
+##################################
+
+
 # Graphique 
 ggplot(df_forecast, aes(x = Forecast, fill = Condition)) +
   geom_density(alpha = 0.5, color = NA) + 
@@ -75,9 +77,8 @@ ggplot(df_forecast, aes(x = Forecast, fill = Condition)) +
 
 
 
-
 #Boxplot confiance
-df__conf <- df_comparaison |>
+df_conf <- df_comparaison |>
   select(Date, source, Conf_Random, Conf_Ordered) |>
   pivot_longer(cols = c(Conf_Random, Conf_Ordered),
                names_to = "Condition", values_to = "Confiance") |>
