@@ -1,4 +1,4 @@
-#Création d'un xlsx avec toutes les dates de prévision
+# Création d'un xlsx avec toutes les dates de prévision
 
 source("Library_Nowcasting_LLM.R")
 
@@ -38,24 +38,24 @@ date_prev_temp_BDF <- date_prev_temp_BDF |>
       annee_prev >= 2015 & annee_prev <= 2019 ~ date_courte_d,
       annee_prev >= 2020 & annee_prev <= 2025 ~ date_longue_d
     )
-  ) 
+  )
 
-date_publi_prev<- date_prev_temp_BDF |>
+date_publi_prev <- date_prev_temp_BDF |>
   select(fichier, trimestre, date_finale_d) |>
-  filter(!is.na(date_finale_d)) 
+  filter(!is.na(date_finale_d))
 
 
-# on supprime les lignes où la variable date_finale_d est manquante (NA) 
+# on supprime les lignes où la variable date_finale_d est manquante (NA)
 # car pas de publication de l'enquête (pandémie)
 
 
 ### Initialisation de la date à la veille de la parution de chaque EMC ##
 
-df_date <- date_publi_prev|>
-  mutate(`Date Prevision` = date_finale_d - 1,
-         .keep = "none")
+df_date <- date_publi_prev |>
+  mutate(
+    `Date Prevision` = date_finale_d - 1,
+    .keep = "none"
+  )
 
 
 write.xlsx(df_date, file = here("dates_prev.xlsx"))
-
-

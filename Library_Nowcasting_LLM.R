@@ -1,4 +1,4 @@
-#Script with all the libraries needed
+# Script with all the libraries needed
 
 library(pdftools)
 library(qpdf)

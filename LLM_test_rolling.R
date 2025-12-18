@@ -1,16 +1,16 @@
-#Script : Requête LLM avec enquête en input, de 1 à 3 selon le mois au sein du trimestre
+# Script : Requête LLM avec enquête en input, de 1 à 3 selon le mois au sein du trimestre
 
-rm(list = ls())  
+rm(list = ls())
 source("Library_Nowcasting_LLM.R")
 source("LLM_functions.R")
 source("Script_dates_prev.R")
 source("Parametres_generaux.R")
 
 #######################
-#Paramètres spécifiques
+# Paramètres spécifiques
 #######################
 
-#Systeme prompt
+# Systeme prompt
 sys_prompt <- system_prompt("Text")
 
 
@@ -21,34 +21,40 @@ output_folder_INSEE <- "INSEE_rolling_files_used"
 
 
 ###################################
-# Prompts 
+# Prompts
 ###################################
 
 
 if (english == 1) {
   try(Sys.setlocale("LC_TIME", "English"), silent = TRUE)
-  
-  #Renvoie le bon dirigeant
+
+  # Renvoie le bon dirigeant
   current_boss <- function(type, d) {
-    if (type == "BDF") return(BDF_current_boss(d))
-    if (type == "INSEE") return(INSEE_current_boss(d))
+    if (type == "BDF") {
+      return(BDF_current_boss(d))
+    }
+    if (type == "INSEE") {
+      return(INSEE_current_boss(d))
+    }
   }
-  
-  # 
+
+  #
   prompt_template <- function(type, d, q_trim, y_prev) {
     boss <- current_boss(type, d)
-    position <- ifelse(type == "BDF", "Governor of the Banque de France" , "Director General of INSEE")
-    current_quarter <- if (q_trim == 1){
-      "first"}
-    else if (q_trim == 2){
+    position <- ifelse(type == "BDF", "Governor of the Banque de France", "Director General of INSEE")
+    current_quarter <- if (q_trim == 1) {
+      "first"
+    } else if (q_trim == 2) {
       "second"
-    }else if (q_trim == 3){
-      "third"}else{
-        "fourth"}
-    
-    
+    } else if (q_trim == 3) {
+      "third"
+    } else {
+      "fourth"
+    }
+
+
     paste0(
-      "Forget the previous instructions and answers. You are ", boss, ", ", position, 
+      "Forget the previous instructions and answers. You are ", boss, ", ", position,
       ", giving a speech about the economic outlook of France. Today is ",
       format(d, "%d %B %Y"), ". ",
       "You will be provided with a document with information about the current state and recent past of the French economy. ",
@@ -59,27 +65,32 @@ if (english == 1) {
       "Do NOT use any information published after ", format(d, "%d %B %Y"), "."
     )
   }
-  
 } else {
   try(Sys.setlocale("LC_TIME", "French"), silent = TRUE)
-  
+
   current_boss <- function(type, d) {
-    if (type == "BDF") return(BDF_current_boss(d))
-    if (type == "INSEE") return(INSEE_current_boss(d))
+    if (type == "BDF") {
+      return(BDF_current_boss(d))
+    }
+    if (type == "INSEE") {
+      return(INSEE_current_boss(d))
+    }
   }
-  
+
   prompt_template <- function(type, d, q_trim, y_prev) {
     boss <- current_boss(type, d)
-    position <- ifelse(type == "BDF","Gouverneur de la Banque de France", "Directeur Général de l'INSEE")  
-    trimestre_actuel <- if (q_trim == 1){
-      "premier"}
-    else if (q_trim == 2){
+    position <- ifelse(type == "BDF", "Gouverneur de la Banque de France", "Directeur Général de l'INSEE")
+    trimestre_actuel <- if (q_trim == 1) {
+      "premier"
+    } else if (q_trim == 2) {
       "second"
-    }else if (q_trim == 3){
-      "troisième"}else{
-        "quatrième"}
-    
-    
+    } else if (q_trim == 3) {
+      "troisième"
+    } else {
+      "quatrième"
+    }
+
+
     paste0(
       "Oubliez les instructions et les réponses précédentes. Vous êtes ", boss, ", ", position,
       ", qui prononce un discours sur les perspectives économiques de la France. Nous sommes le ",
@@ -107,15 +118,15 @@ t1 <- Sys.time()
 
 for (dt in as.Date(dates$`Date Prevision`)) {
   current_date <- as.Date(dt)
-  
-  #sécurité 
+
+  # sécurité
   if (!dir.exists(output_folder_BDF)) dir.create(output_folder_BDF, recursive = TRUE, showWarnings = FALSE)
   if (!dir.exists(output_folder_INSEE)) dir.create(output_folder_INSEE, recursive = TRUE, showWarnings = FALSE)
-  
+
   # identification du trimestre et du rang dans le trimestre
   m <- month(current_date)
   y <- year(current_date)
-  
+
   if (m == 1) {
     # janvier -> dernier trimestre de l'année précédente
     months_in_quarter <- 3
@@ -126,36 +137,40 @@ for (dt in as.Date(dates$`Date Prevision`)) {
     year_ref <- y
     months_in_quarter <- ((m - 2) %% 3) + 1
   }
-  
-  message(sprintf("Date: %s -> T%d (%d) mois dans le trimestre", 
-                  format(current_date, "%Y-%m-%d"), q_trim, months_in_quarter))
-  
+
+  message(sprintf(
+    "Date: %s -> T%d (%d) mois dans le trimestre",
+    format(current_date, "%Y-%m-%d"), q_trim, months_in_quarter
+  ))
+
   # construire la séquence des mois du trimestre (ex : q_trim = 1 alor de  Jan-Mar)
   quarter_first_month <- (q_trim - 1) * 3 + 1
   quarter_months <- quarter_first_month:(quarter_first_month + 2)
   # on sélectionne les mois voulus selon la date (ordre ancien->récent)
   months_to_fetch <- quarter_months[1:months_in_quarter]
-  
-  #Partie BDF
-  
+
+  # Partie BDF
+
   BDF_docs_to_merge <- c()
   current_ref_date <- current_date
   date_pub <- date_publi_prev
-  #On va prendre tous les EMC publié à la date ou avant et n'en garder que le nombre souhaité (selon position du mois dans trimestre)
+  # On va prendre tous les EMC publié à la date ou avant et n'en garder que le nombre souhaité (selon position du mois dans trimestre)
   candidats <- date_pub |>
     filter(date_finale_d <= as.Date(current_ref_date) + 1L)
-  last_docs<- candidats |>
+  last_docs <- candidats |>
     arrange(desc(date_finale_d))
-  
+
   docs_selected <- head(last_docs$fichier, months_in_quarter)
   path_docs <- path_from_docname(docs_selected, folder = document_folder_BDF)
   # chemins PDF complets
   BDF_docs_to_merge <- file.path(path_docs)
-  BDF_combined_path <- file.path(output_folder_BDF,
-                                 paste0("combined_BDF_", format(current_date, "%Y%m%d"), ".pdf"))
+  BDF_combined_path <- file.path(
+    output_folder_BDF,
+    paste0("combined_BDF_", format(current_date, "%Y%m%d"), ".pdf")
+  )
   merge_pdfs(BDF_docs_to_merge, BDF_combined_path)
-  
-  
+
+
   # Paramètre de prévision
   m <- month(current_date)
   y <- year(current_date)
@@ -166,36 +181,38 @@ for (dt in as.Date(dates$`Date Prevision`)) {
     q_trim <- ((m - 2) %/% 3) + 1
     year_prev <- y
   }
-  
-  #BDF
+
+  # BDF
   if (file.exists(BDF_combined_path)) {
     uploaded_bdf <- google_upload(BDF_combined_path,
-                                  base_url = "https://generativelanguage.googleapis.com/", 
-                                  api_key = cle_API)
-    
+      base_url = "https://generativelanguage.googleapis.com/",
+      api_key = cle_API
+    )
+
     prompt_bdf <- prompt_template("BDF", current_date, q_trim, year_prev)
-    
+
     out_bdf <- future_lapply(seq_len(n_repro), function(i) {
-      #Chat gemini initialisé dans le worker
+      # Chat gemini initialisé dans le worker
       chat_gemini_worker <- chat_google_gemini(
         system_prompt = sys_prompt,
-        base_url = "https://generativelanguage.googleapis.com/v1beta/", 
+        base_url = "https://generativelanguage.googleapis.com/v1beta/",
         api_key = cle_API,
-        model = "gemini-2.5-pro", 
+        model = "gemini-2.5-pro",
         params(temperature = temp_LLM, max_tokens = 5000)
       )
 
-      
-      tryCatch({
-        
-        chat_gemini_worker$chat(uploaded_bdf, prompt_bdf)
-      }, error = \(e) {
-        return(paste0("Erreur dans le worker: ", as.character(e)))
-      })
-      
+
+      tryCatch(
+        {
+          chat_gemini_worker$chat(uploaded_bdf, prompt_bdf)
+        },
+        error = \(e) {
+          return(paste0("Erreur dans le worker: ", as.character(e)))
+        }
+      )
     }, future.seed = TRUE)
-    
-    
+
+
     histoires <- sapply(out_bdf, \(x) ifelse(is.list(x), x$text, x))
     parsed <- regmatches(histoires, regexec(forecast_confidence_pattern, histoires))
     df_bdf <- data.frame(Date = current_date, Prompt = prompt_bdf)
@@ -208,18 +225,17 @@ for (dt in as.Date(dates$`Date Prevision`)) {
     }
     results_BDF[[length(results_BDF) + 1]] <- df_bdf
   }
-  
+
   # INSEE
-  #BOUCLE INSEE
-  
+  # BOUCLE INSEE
+
   INSEE_docs_to_merge <- c()
-  months_desc <- rev(months_to_fetch) 
-  
+  months_desc <- rev(months_to_fetch)
+
   for (mm in months_desc) {
-    
     target_year <- year_ref
-    target_month <- mm 
-    
+    target_month <- mm
+
     # Construire noms attendus AAAA_MM_TYPE.pdf
     emi_file <- file.path(document_folder_INSEE, sprintf("%04d_%02d_EMI.pdf", target_year, target_month))
     ser_file <- file.path(document_folder_INSEE, sprintf("%04d_%02d_SER.pdf", target_year, target_month))
@@ -229,39 +245,42 @@ for (dt in as.Date(dates$`Date Prevision`)) {
     if (file.exists(ser_file)) INSEE_docs_to_merge <- c(INSEE_docs_to_merge, ser_file)
     if (file.exists(bat_file)) INSEE_docs_to_merge <- c(INSEE_docs_to_merge, bat_file)
   }
-  
-  INSEE_combined_path <- file.path(output_folder_INSEE,
-                                   paste0("combined_INSEE_", format(current_date, "%Y%m%d"), ".pdf"))
+
+  INSEE_combined_path <- file.path(
+    output_folder_INSEE,
+    paste0("combined_INSEE_", format(current_date, "%Y%m%d"), ".pdf")
+  )
   merge_pdfs(INSEE_docs_to_merge, INSEE_combined_path)
-  
+
   if (file.exists(INSEE_combined_path)) {
-    uploaded_insee <- google_upload(INSEE_combined_path, 
-                                    base_url = "https://generativelanguage.googleapis.com/", 
-                                    api_key = cle_API)
+    uploaded_insee <- google_upload(INSEE_combined_path,
+      base_url = "https://generativelanguage.googleapis.com/",
+      api_key = cle_API
+    )
     prompt_insee <- prompt_template("INSEE", current_date, q_trim, year_prev)
-    
-    
+
+
     out_insee <- future_lapply(seq_len(n_repro), function(i) {
- 
       # Déclarer chat gemini directement dans le worker
       chat_gemini_worker <- chat_google_gemini(
         system_prompt = sys_prompt,
-        base_url = "https://generativelanguage.googleapis.com/v1beta/", 
-        api_key = cle_API,  
-        model = "gemini-2.5-pro", 
+        base_url = "https://generativelanguage.googleapis.com/v1beta/",
+        api_key = cle_API,
+        model = "gemini-2.5-pro",
         params(temperature = temp_LLM, max_tokens = 5000)
       )
-     
-      
-      tryCatch({
-        
-        chat_gemini_worker$chat(uploaded_insee, prompt_insee)
-      }, error = \(e) {
-        return(paste0("Erreur dans le worker: ", as.character(e)))
-      })
-      
+
+
+      tryCatch(
+        {
+          chat_gemini_worker$chat(uploaded_insee, prompt_insee)
+        },
+        error = \(e) {
+          return(paste0("Erreur dans le worker: ", as.character(e)))
+        }
+      )
     }, future.seed = TRUE)
-    
+
     histoires <- sapply(out_insee, \(x) ifelse(is.list(x), x$text, x))
     parsed <- regmatches(histoires, regexec(forecast_confidence_pattern, histoires))
     df_insee <- data.frame(Date = current_date, Prompt = prompt_insee)
@@ -284,5 +303,3 @@ write.xlsx(df_results_rolling_text_INSEE, "Results/INSEE_rolling_text.xlsx")
 
 t2 <- Sys.time()
 print(diff(range(t1, t2)))
-
-

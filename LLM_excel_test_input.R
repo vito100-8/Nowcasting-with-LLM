@@ -1,6 +1,6 @@
-#INSERTION D'UN EXCEL ITERATIF SELON LA PERIODE DE PREVISION AU LLM#
+# INSERTION D'UN EXCEL ITERATIF SELON LA PERIODE DE PREVISION AU LLM#
 
-rm(list = ls())  
+rm(list = ls())
 source("Library_Nowcasting_LLM.R")
 source("LLM_functions.R")
 source("Script_dates_prev.R")
@@ -8,27 +8,28 @@ source("Parametres_generaux.R")
 
 
 #######################
-#Paramètres spécifiques
+# Paramètres spécifiques
 #######################
 
 
-#Systeme prompt
+# Systeme prompt
 sys_prompt <- system_prompt("Text")
 
-#Initialisation LLM
+# Initialisation LLM
 if (cle_API == "") stop("Clé API Gemini manquante. Ajoute API_KEY_GEMINI dans env/.Renviron")
-chat_gemini <- chat_google_gemini( system_prompt = sys_prompt,
-                                   base_url = "https://generativelanguage.googleapis.com/v1beta/", 
-                                   api_key = cle_API, 
-                                   model = "gemini-2.5-pro", 
-                                   params(temperature = temp_LLM, max_tokens = 5000)
+chat_gemini <- chat_google_gemini(
+  system_prompt = sys_prompt,
+  base_url = "https://generativelanguage.googleapis.com/v1beta/",
+  api_key = cle_API,
+  model = "gemini-2.5-pro",
+  params(temperature = temp_LLM, max_tokens = 5000)
 )
 
 ############################
-#Données et nettoyage
+# Données et nettoyage
 ############################
 
-#Téléchargement données
+# Téléchargement données
 
 df_PIB <- read_xlsx("Data_BDF_INSEE.xlsx", sheet = "trimestriel")
 df_enq_BDF <- read.xlsx("Data_BDF_INSEE.xlsx", sheet = "ENQ_BDF")
@@ -36,24 +37,27 @@ df_enq_INSEE <- read_xlsx("Data_BDF_INSEE.xlsx", sheet = "ENQ_INSEE")
 
 
 
-#Nettoyage de df_enq_INSEE
+# Nettoyage de df_enq_INSEE
 
 df_enq_INSEE <- df_enq_INSEE |>
   mutate(
-    dates = str_replace_all(dates, 
-                            c("janv\\." = "jan", "févr\\." = "feb", "mars" = "mar",
-                              "avr\\." = "apr", "mai" = "may", "juin" = "jun",
-                              "juil\\." = "jul", "août" = "aug", "sept\\." = "sep",
-                              "oct\\." = "oct", "nov\\." = "nov", "déc\\." = "dec"))
+    dates = str_replace_all(
+      dates,
+      c(
+        "janv\\." = "jan", "févr\\." = "feb", "mars" = "mar",
+        "avr\\." = "apr", "mai" = "may", "juin" = "jun",
+        "juil\\." = "jul", "août" = "aug", "sept\\." = "sep",
+        "oct\\." = "oct", "nov\\." = "nov", "déc\\." = "dec"
+      )
+    )
   ) |>
-  mutate(dates_temp = as.Date(parse_date_time(dates, orders = "b Y"), origin = "1970-01-01")) 
+  mutate(dates_temp = as.Date(parse_date_time(dates, orders = "b Y"), origin = "1970-01-01"))
 
 
-  v_dates <- rollforward(df_enq_INSEE$dates_temp)
-  df_enq_INSEE <- df_enq_INSEE |>
-    mutate(dates = v_dates) |>
-    select(!dates_temp)
-
+v_dates <- rollforward(df_enq_INSEE$dates_temp)
+df_enq_INSEE <- df_enq_INSEE |>
+  mutate(dates = v_dates) |>
+  select(!dates_temp)
 
 
 ####################################
@@ -62,55 +66,66 @@ df_enq_INSEE <- df_enq_INSEE |>
 
 if (english == 1) {
   try(Sys.setlocale("LC_TIME", "English"), silent = TRUE)
-  
-  #Renvoie le bon dirigeant
+
+  # Renvoie le bon dirigeant
   current_boss <- function(type, d) {
-    if (type == "BDF") return(BDF_current_boss(d))
-    if (type == "INSEE") return(INSEE_current_boss(d))
+    if (type == "BDF") {
+      return(BDF_current_boss(d))
+    }
+    if (type == "INSEE") {
+      return(INSEE_current_boss(d))
+    }
   }
-  
-  # 
+
+  #
   prompt_template <- function(type, d, q_trim, y_prev) {
     boss <- current_boss(type, d)
-    position <- ifelse(type == "BDF", "Governor of the Banque de France" , "Director General of INSEE")
-    current_quarter <- if (q_trim == 1){
-      "first"}
-    else if (q_trim == 2){
+    position <- ifelse(type == "BDF", "Governor of the Banque de France", "Director General of INSEE")
+    current_quarter <- if (q_trim == 1) {
+      "first"
+    } else if (q_trim == 2) {
       "second"
-    }else if (q_trim == 3){
-      "third"}else{
-        "fourth"}
-    
-    
+    } else if (q_trim == 3) {
+      "third"
+    } else {
+      "fourth"
+    }
+
+
     paste0(
-      "Forget the previous instructions and answers. You are ", boss, ", ", position, 
+      "Forget the previous instructions and answers. You are ", boss, ", ", position,
       ", giving a speech about the economic outlook of France. Today is ",
       format(d, "%d %B %Y"), ". ",
       "You will be provided with a document with information about the current state and recent past of the French economy. ",
       "Give the last value available for the climate business in manufacturing industry (give only the figure without any comment)."
     )
   }
-  
 } else {
   try(Sys.setlocale("LC_TIME", "French"), silent = TRUE)
-  
+
   current_boss <- function(type, d) {
-    if (type == "BDF") return(BDF_current_boss(d))
-    if (type == "INSEE") return(INSEE_current_boss(d))
+    if (type == "BDF") {
+      return(BDF_current_boss(d))
+    }
+    if (type == "INSEE") {
+      return(INSEE_current_boss(d))
+    }
   }
-  
+
   prompt_template <- function(type, d, q_trim, y_prev) {
     boss <- current_boss(type, d)
-    position <- ifelse(type == "BDF","Gouverneur de la Banque de France", "Directeur Général de l'INSEE")  
-    trimestre_actuel <- if (q_trim == 1){
-      "premier"}
-    else if (q_trim == 2){
+    position <- ifelse(type == "BDF", "Gouverneur de la Banque de France", "Directeur Général de l'INSEE")
+    trimestre_actuel <- if (q_trim == 1) {
+      "premier"
+    } else if (q_trim == 2) {
       "second"
-    }else if (q_trim == 3){
-      "troisième"}else{
-        "quatrième"}
-    
-    
+    } else if (q_trim == 3) {
+      "troisième"
+    } else {
+      "quatrième"
+    }
+
+
     paste0(
       "Oubliez les instructions et les réponses précédentes. Vous êtes ", boss, ", ", position,
       ", qui prononce un discours sur les perspectives économiques de la France. Nous sommes le ",
@@ -120,7 +135,6 @@ if (english == 1) {
     )
   }
 }
-
 
 
 ###########################################
@@ -139,60 +153,72 @@ row_id_BDF <- 1
 
 for (dt in as.Date(dates$`Date Prevision`)[1:2]) {
   current_date <- as.Date(dt)
-  
+
   # Tronquage
-  df_temp <- df_enq_BDF |> 
+  df_temp <- df_enq_BDF |>
     filter(dates <= as.Date(dt))
-  
+
 
   # Nom du fichier Excel
   file_name <- paste0("date_max_BDF_", format(current_date, "%Y%m%d"), ".csv")
-  
+
   # Sauvegarde locale en CSV
-  write.csv(df_temp, file = file.path("Indicateurs_BDF", file_name), 
-            row.names = FALSE, fileEncoding = "UTF-8")
+  write.csv(df_temp,
+    file = file.path("Indicateurs_BDF", file_name),
+    row.names = FALSE, fileEncoding = "UTF-8"
+  )
   cat("Fichier CSV créé :", file_name, "\n")
-  
+
   # Récupération du chemin complet
-  input_doc <- normalizePath(file.path("Indicateurs_BDF", file_name), 
-                             winslash = "/", mustWork = TRUE)
-  
-  
-  
+  input_doc <- normalizePath(file.path("Indicateurs_BDF", file_name),
+    winslash = "/", mustWork = TRUE
+  )
+
+
   uploaded_doc <- google_upload(
     input_doc,
-    api_key = cle_API) 
-  
+    api_key = cle_API
+  )
+
   # Initialisation des dates
-  
+
   mois_index <- as.integer(format(current_date, "%m"))
   year_current <- as.integer(format(current_date, "%Y"))
-  trimestre_index <- if (mois_index %in% c(1,11,12)) 4 else if (mois_index %in% 2:4) 1 else if (mois_index %in% 5:7) 2 else 3
+  trimestre_index <- if (mois_index %in% c(1, 11, 12)) 4 else if (mois_index %in% 2:4) 1 else if (mois_index %in% 5:7) 2 else 3
   year_prev <- if (mois_index == 1 && trimestre_index == 4) year_current - 1 else year_current
-  prompt_text <- prompt_template("BDF",current_date, trimestre_index ,
-                                     year_prev)
-  
+  prompt_text <- prompt_template(
+    "BDF", current_date, trimestre_index,
+    year_prev
+  )
+
   # appel à Gemini en intégrant le document voulu
   out_list <- future_lapply(seq_len(n_repro), function(i) {
-    tryCatch({
-      resp <- chat_gemini$chat(uploaded_doc, prompt_text)
-      return(resp)}, error = function(e) {
+    tryCatch(
+      {
+        resp <- chat_gemini$chat(uploaded_doc, prompt_text)
+        return(resp)
+      },
+      error = function(e) {
         message("API error: ", conditionMessage(e))
         return(NA_character_)
-      })
-    
+      }
+    )
   }, future.seed = TRUE)
-  
+
   # Parse les résultats
-  histoires <- sapply(out_list, function(x) {if (is.list(x) && !is.null(x$text)) {
-    return(x$text)
-  } else if (is.character(x)) {
-    return(x)
-  } else {
-    return(NA_character_)
-  }})
+  histoires <- sapply(out_list, function(x) {
+    if (is.list(x) && !is.null(x$text)) {
+      return(x$text)
+    } else if (is.character(x)) {
+      return(x)
+    } else {
+      return(NA_character_)
+    }
+  })
   parsed_list <- lapply(histoires, function(txt) {
-    if (is.null(txt) || length(txt) == 0) return(list(forecast = NA_real_, confidence = NA_integer_, raw = NA_character_))
+    if (is.null(txt) || length(txt) == 0) {
+      return(list(forecast = NA_real_, confidence = NA_integer_, raw = NA_character_))
+    }
     m <- regmatches(txt, regexec(forecast_confidence_pattern, txt))
     if (length(m[[1]]) >= 3) {
       list(forecast = as.numeric(m[[1]][2]), confidence = as.integer(m[[1]][3]), raw = txt)
@@ -200,15 +226,15 @@ for (dt in as.Date(dates$`Date Prevision`)[1:2]) {
       list(forecast = NA_real_, confidence = NA_integer_, raw = txt)
     }
   })
-  
-  #Df des résultats
+
+  # Df des résultats
   df_excel_BDF <- data.frame(Date = as.character(current_date), Prompt = prompt_text, stringsAsFactors = FALSE)
   for (i in seq_len(n_repro)) {
-    df_excel_BDF[[paste0("forecast_", i)]]  <- parsed_list[[i]]$forecast
+    df_excel_BDF[[paste0("forecast_", i)]] <- parsed_list[[i]]$forecast
     df_excel_BDF[[paste0("confidence_", i)]] <- parsed_list[[i]]$confidence
     df_excel_BDF[[paste0("answer_", i)]] <- parsed_list[[i]]$raw
   }
-  
+
   results_uploads_BDF[[row_id_BDF]] <- df_excel_BDF
   row_id_BDF <- row_id_BDF + 1
   Sys.sleep(0.5)
@@ -228,49 +254,55 @@ row_id_INSEE <- 1
 
 for (dt in as.Date(dates$`Date Prevision`)[1:2]) {
   current_date <- as.Date(dt)
-  
-  
+
+
   # Tronquage
-  df_temp <- df_enq_INSEE |> 
+  df_temp <- df_enq_INSEE |>
     filter(dates <= current_date)
-  
+
 
   # Nom du fichier CSV
   file_name <- paste0("date_max_INSEE_", format(current_date, "%Y%m%d"), ".csv")
-  
+
   # Sauvegarde locale en CSV
-  write.csv(df_temp, file = file.path("Indicateurs_INSEE", file_name), 
-            row.names = FALSE, fileEncoding = "UTF-8")
+  write.csv(df_temp,
+    file = file.path("Indicateurs_INSEE", file_name),
+    row.names = FALSE, fileEncoding = "UTF-8"
+  )
   cat("Fichier CSV créé :", file_name, "\n")
-  
+
   # Récupération du chemin complet
-  input_doc <- normalizePath(file.path("Indicateurs_INSEE", file_name), 
-                             winslash = "/", mustWork = TRUE)
-  
+  input_doc <- normalizePath(file.path("Indicateurs_INSEE", file_name),
+    winslash = "/", mustWork = TRUE
+  )
+
   # Upload du document
   uploaded_doc <- google_upload(
     input_doc,
     api_key = cle_API
   )
-  
+
   # Initialisation des dates
   mois_index <- as.integer(format(current_date, "%m"))
   year_current <- as.integer(format(current_date, "%Y"))
-  trimestre_index <- if (mois_index %in% c(1,11,12)) 4 else if (mois_index %in% 2:4) 1 else if (mois_index %in% 5:7) 2 else 3
+  trimestre_index <- if (mois_index %in% c(1, 11, 12)) 4 else if (mois_index %in% 2:4) 1 else if (mois_index %in% 5:7) 2 else 3
   year_prev <- if (mois_index == 1 && trimestre_index == 4) year_current - 1 else year_current
   prompt_text <- prompt_template("INSEE", current_date, trimestre_index, year_prev)
-  
+
   # Appel à Gemini en intégrant le document voulu
   out_list <- future_lapply(seq_len(n_repro), function(i) {
-    tryCatch({
-      resp <- chat_gemini$chat(uploaded_doc, prompt_text)
-      return(resp)
-    }, error = function(e) {
-      message("API error: ", conditionMessage(e))
-      return(NA_character_)
-    })
+    tryCatch(
+      {
+        resp <- chat_gemini$chat(uploaded_doc, prompt_text)
+        return(resp)
+      },
+      error = function(e) {
+        message("API error: ", conditionMessage(e))
+        return(NA_character_)
+      }
+    )
   }, future.seed = TRUE)
-  
+
   # Parse les résultats
   histoires <- sapply(out_list, function(x) {
     if (is.list(x) && !is.null(x$text)) {
@@ -281,10 +313,11 @@ for (dt in as.Date(dates$`Date Prevision`)[1:2]) {
       return(NA_character_)
     }
   })
-  
+
   parsed_list <- lapply(histoires, function(txt) {
-    if (is.null(txt) || length(txt) == 0) 
+    if (is.null(txt) || length(txt) == 0) {
       return(list(forecast = NA_real_, confidence = NA_integer_, raw = NA_character_))
+    }
     m <- regmatches(txt, regexec(forecast_confidence_pattern, txt))
     if (length(m[[1]]) >= 3) {
       list(forecast = as.numeric(m[[1]][2]), confidence = as.integer(m[[1]][3]), raw = txt)
@@ -292,15 +325,15 @@ for (dt in as.Date(dates$`Date Prevision`)[1:2]) {
       list(forecast = NA_real_, confidence = NA_integer_, raw = txt)
     }
   })
-  
+
   # Dataframe des résultats
   df_excel_INSEE <- data.frame(Date = as.character(current_date), Prompt = prompt_text, stringsAsFactors = FALSE)
   for (i in seq_len(n_repro)) {
-    df_excel_INSEE[[paste0("forecast_", i)]]  <- parsed_list[[i]]$forecast
+    df_excel_INSEE[[paste0("forecast_", i)]] <- parsed_list[[i]]$forecast
     df_excel_INSEE[[paste0("confidence_", i)]] <- parsed_list[[i]]$confidence
     df_excel_INSEE[[paste0("answer_", i)]] <- parsed_list[[i]]$raw
   }
-  
+
   results_uploads_INSEE[[row_id_INSEE]] <- df_excel_INSEE
   row_id_INSEE <- row_id_INSEE + 1
   Sys.sleep(0.5)
@@ -309,5 +342,3 @@ for (dt in as.Date(dates$`Date Prevision`)[1:2]) {
 # Stockage + document résultat
 df_excel_INSEE <- do.call(rbind, results_uploads_INSEE)
 write.xlsx(df_excel_INSEE, file = "Indicateurs_INSEE/upload_summary.xlsx", overwrite = TRUE)
-
-

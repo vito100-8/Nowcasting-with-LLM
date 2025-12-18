@@ -1,30 +1,31 @@
-# Script : Requêtes LLM (Gemini) avec PDF des 12 derniers mois en pièce-jointe 
+# Script : Requêtes LLM (Gemini) avec PDF des 12 derniers mois en pièce-jointe
 
 
-rm(list = ls())  
+rm(list = ls())
 source("Library_Nowcasting_LLM.R")
 source("LLM_functions.R")
 source("Script_dates_prev.R")
 source("Parametres_generaux.R")
 
 #######################
-#Paramètres spécifiques
+# Paramètres spécifiques
 #######################
 
-#dates spéciales : commencer en 2016 pour que BDF aie accès à 12 fichiers
+# dates spéciales : commencer en 2016 pour que BDF aie accès à 12 fichiers
 dates_12 <- dates |>
-  filter(`Date Prevision`> "2016-01-12")
+  filter(`Date Prevision` > "2016-01-12")
 
-#Systeme prompt
+# Systeme prompt
 sys_prompt <- system_prompt("Text")
 
-#Initialisation LLM
+# Initialisation LLM
 if (cle_API == "") stop("Clé API Gemini manquante. Ajoute API_KEY_GEMINI dans env/.Renviron")
-chat_gemini <- chat_google_gemini( system_prompt = sys_prompt,
-                                   base_url = "https://generativelanguage.googleapis.com/v1beta/", 
-                                   api_key = cle_API, 
-                                   model = "gemini-2.5-pro", 
-                                   params(temperature = temp_LLM, max_tokens = 5000)
+chat_gemini <- chat_google_gemini(
+  system_prompt = sys_prompt,
+  base_url = "https://generativelanguage.googleapis.com/v1beta/",
+  api_key = cle_API,
+  model = "gemini-2.5-pro",
+  params(temperature = temp_LLM, max_tokens = 5000)
 )
 
 document_folder_BDF <- "docEMC_clean"
@@ -37,28 +38,34 @@ document_folder_INSEE <- "INSEE_Scrap"
 
 if (english == 1) {
   try(Sys.setlocale("LC_TIME", "English"), silent = TRUE)
-  
-  #Renvoie le bon dirigeant
+
+  # Renvoie le bon dirigeant
   current_boss <- function(type, d) {
-    if (type == "BDF") return(BDF_current_boss(d))
-    if (type == "INSEE") return(INSEE_current_boss(d))
+    if (type == "BDF") {
+      return(BDF_current_boss(d))
+    }
+    if (type == "INSEE") {
+      return(INSEE_current_boss(d))
+    }
   }
-  
-  # 
+
+  #
   prompt_template <- function(type, d, q_trim, y_prev) {
     boss <- current_boss(type, d)
-    position <- ifelse(type == "BDF", "Governor of the Banque de France" , "Director General of INSEE")
-    current_quarter <- if (q_trim == 1){
-      "first"}
-    else if (q_trim == 2){
+    position <- ifelse(type == "BDF", "Governor of the Banque de France", "Director General of INSEE")
+    current_quarter <- if (q_trim == 1) {
+      "first"
+    } else if (q_trim == 2) {
       "second"
-    }else if (q_trim == 3){
-      "third"}else{
-        "fourth"}
-    
-    
+    } else if (q_trim == 3) {
+      "third"
+    } else {
+      "fourth"
+    }
+
+
     paste0(
-      "Forget the previous instructions and answers. You are ", boss, ", ", position, 
+      "Forget the previous instructions and answers. You are ", boss, ", ", position,
       ", giving a speech about the economic outlook of France. Today is ",
       format(d, "%d %B %Y"), ". ",
       "You will be provided with a document with information about the current state and recent past of the French economy. ",
@@ -69,27 +76,32 @@ if (english == 1) {
       "Do NOT use any information published after ", format(d, "%d %B %Y"), "."
     )
   }
-  
 } else {
   try(Sys.setlocale("LC_TIME", "French"), silent = TRUE)
-  
+
   current_boss <- function(type, d) {
-    if (type == "BDF") return(BDF_current_boss(d))
-    if (type == "INSEE") return(INSEE_current_boss(d))
+    if (type == "BDF") {
+      return(BDF_current_boss(d))
+    }
+    if (type == "INSEE") {
+      return(INSEE_current_boss(d))
+    }
   }
-  
+
   prompt_template <- function(type, d, q_trim, y_prev) {
     boss <- current_boss(type, d)
-    position <- ifelse(type == "BDF","Gouverneur de la Banque de France", "Directeur Général de l'INSEE")  
-    trimestre_actuel <- if (q_trim == 1){
-      "premier"}
-    else if (q_trim == 2){
+    position <- ifelse(type == "BDF", "Gouverneur de la Banque de France", "Directeur Général de l'INSEE")
+    trimestre_actuel <- if (q_trim == 1) {
+      "premier"
+    } else if (q_trim == 2) {
       "second"
-    }else if (q_trim == 3){
-      "troisième"}else{
-        "quatrième"}
-    
-    
+    } else if (q_trim == 3) {
+      "troisième"
+    } else {
+      "quatrième"
+    }
+
+
     paste0(
       "Oubliez les instructions et les réponses précédentes. Vous êtes ", boss, ", ", position,
       ", qui prononce un discours sur les perspectives économiques de la France. Nous sommes le ",
@@ -111,8 +123,7 @@ if (english == 1) {
 ###################################
 
 
-
-#Création chemin d'accès
+# Création chemin d'accès
 dir.create("./BDF_files_used_12", showWarnings = FALSE, recursive = TRUE)
 
 
@@ -121,26 +132,26 @@ forecast_confidence_pattern <- "([+-]?\\d+\\.?\\d*)\\s*\\(\\s*(\\d{1,3})\\s*\\)"
 
 # Creation de la list contenant les résultats
 results_BDF <- list()
-row_id_BDF <- 1 
+row_id_BDF <- 1
 
 t1 <- Sys.time()
 for (dt in as.Date(dates_12$`Date Prevision`)) {
-  current_date <- as.Date(dt) 
-  
+  current_date <- as.Date(dt)
+
   # Récupérer les 12 derniers documents
   last_12_docs <- get_last_12_doc(current_date)
-  
-  #Transformer en chemins complets
+
+  # Transformer en chemins complets
   all_bdf_docs_to_combine <- map_chr(last_12_docs, path_from_docname, folder = document_folder_BDF)
 
-  
+
   # Chemin du PDF combiné
   combined_pdf_path <- file.path("./BDF_files_used_12/", paste0("combined_BDF_", format(current_date, "%Y%m%d"), ".pdf"))
-  
+
   # Concaténation des fichiers
   BDF_path <- merge_pdfs(all_bdf_docs_to_combine, combined_pdf_path)
-  
-  
+
+
   # Chargement du pdf souhaité
   uploaded_doc <- google_upload(
     BDF_path,
@@ -151,32 +162,41 @@ for (dt in as.Date(dates_12$`Date Prevision`)) {
   current_date <- as.Date(dt)
   mois_index <- as.integer(format(current_date, "%m"))
   year_current <- as.integer(format(current_date, "%Y"))
-  trimestre_index <- if (mois_index %in% c(1,11,12)) 4 else if (mois_index %in% 2:4) 1 else if (mois_index %in% 5:7) 2 else 3
+  trimestre_index <- if (mois_index %in% c(1, 11, 12)) 4 else if (mois_index %in% 2:4) 1 else if (mois_index %in% 5:7) 2 else 3
   year_prev <- if (mois_index == 1 && trimestre_index == 4) year_current - 1 else year_current
-  prompt_text <- prompt_template("BDF", current_date, trimestre_index ,
-                                     year_prev)
-  
+  prompt_text <- prompt_template(
+    "BDF", current_date, trimestre_index,
+    year_prev
+  )
+
   # appel à Gemini en intégrant le document voulu
   out_list <- future_lapply(seq_len(n_repro), function(i) {
-    tryCatch({
-      resp <- chat_gemini$chat(uploaded_doc, prompt_text)
-      return(resp)}, error = function(e) {
+    tryCatch(
+      {
+        resp <- chat_gemini$chat(uploaded_doc, prompt_text)
+        return(resp)
+      },
+      error = function(e) {
         message("API error: ", conditionMessage(e))
         return(NA_character_)
-      })
-    
+      }
+    )
   }, future.seed = TRUE)
-  
+
   # Parse les résultats
-  histoires <- sapply(out_list, function(x) {if (is.list(x) && !is.null(x$text)) {
-    return(x$text)
-  } else if (is.character(x)) {
-    return(x)
-  } else {
-    return(NA_character_)
-  }})
+  histoires <- sapply(out_list, function(x) {
+    if (is.list(x) && !is.null(x$text)) {
+      return(x$text)
+    } else if (is.character(x)) {
+      return(x)
+    } else {
+      return(NA_character_)
+    }
+  })
   parsed_list <- lapply(histoires, function(txt) {
-    if (is.null(txt) || length(txt) == 0) return(list(forecast = NA_real_, confidence = NA_integer_, raw = NA_character_))
+    if (is.null(txt) || length(txt) == 0) {
+      return(list(forecast = NA_real_, confidence = NA_integer_, raw = NA_character_))
+    }
     m <- regmatches(txt, regexec(forecast_confidence_pattern, txt))
     if (length(m[[1]]) >= 3) {
       list(forecast = as.numeric(m[[1]][2]), confidence = as.integer(m[[1]][3]), raw = txt)
@@ -184,17 +204,17 @@ for (dt in as.Date(dates_12$`Date Prevision`)) {
       list(forecast = NA_real_, confidence = NA_integer_, raw = txt)
     }
   })
-  
-  #Df des résultats
+
+  # Df des résultats
   df_bdf <- data.frame(Date = as.character(current_date), Prompt = prompt_text, stringsAsFactors = FALSE)
   for (i in seq_len(n_repro)) {
-    df_bdf[[paste0("forecast_", i)]]  <- parsed_list[[i]]$forecast
+    df_bdf[[paste0("forecast_", i)]] <- parsed_list[[i]]$forecast
     df_bdf[[paste0("confidence_", i)]] <- parsed_list[[i]]$confidence
     df_bdf[[paste0("answer_", i)]] <- parsed_list[[i]]$raw
   }
-  
+
   results_BDF[[row_id_BDF]] <- df_bdf
-  row_id_BDF<- row_id_BDF+ 1
+  row_id_BDF <- row_id_BDF + 1
   Sys.sleep(0.5)
 }
 
@@ -202,7 +222,7 @@ for (dt in as.Date(dates_12$`Date Prevision`)) {
 df_results_text_12_BDF <- do.call(rbind, results_BDF)
 
 # Enregistrement
-write.xlsx(df_results_text_12_BDF, file = "Results/BDF_text_12.xlsx", sheetName = 'prevision', rowNames = FALSE)
+write.xlsx(df_results_text_12_BDF, file = "Results/BDF_text_12.xlsx", sheetName = "prevision", rowNames = FALSE)
 print("Enregistré: Results/BDF_text_12.xlsx \n")
 
 t2 <- Sys.time()
@@ -210,10 +230,10 @@ print(diff(range(t1, t2)))
 
 
 ########################
-#BOUCLE PRINCIPALE INSEE
+# BOUCLE PRINCIPALE INSEE
 ########################
 
-#Création chemin d'accès
+# Création chemin d'accès
 dir.create("./INSEE_files_used_12", showWarnings = FALSE, recursive = TRUE)
 
 # Forecast regex pattern qui sera appelé dans la boucle pour parse
@@ -221,59 +241,68 @@ forecast_confidence_pattern <- "([+-]?\\d+\\.?\\d*)\\s*\\(\\s*(\\d{1,3})\\s*\\)"
 
 # Creation de la list contenant les résultats
 results_INSEE <- list()
-row_id_INSEE <- 1 
+row_id_INSEE <- 1
 
 t1 <- Sys.time()
 
 for (dt in as.Date(dates_12$`Date Prevision`)) {
   current_date <- as.Date(dt)
-  
+
   all_insee_docs_to_combine <- c(
-    get_last_12_insee_docs_by_type(current_date, "EMI",  document_folder_INSEE),
-    get_last_12_insee_docs_by_type(current_date, "SER",  document_folder_INSEE),
-    get_last_12_insee_docs_by_type(current_date, "BAT",  document_folder_INSEE)
+    get_last_12_insee_docs_by_type(current_date, "EMI", document_folder_INSEE),
+    get_last_12_insee_docs_by_type(current_date, "SER", document_folder_INSEE),
+    get_last_12_insee_docs_by_type(current_date, "BAT", document_folder_INSEE)
   )
-  
-  combined_pdf_path <- file.path( "./INSEE_files_used_12/", paste0("combined_INSEE_", format(current_date, "%Y%m%d"), ".pdf"))
+
+  combined_pdf_path <- file.path("./INSEE_files_used_12/", paste0("combined_INSEE_", format(current_date, "%Y%m%d"), ".pdf"))
   INSEE_path <- merge_pdfs(all_insee_docs_to_combine, combined_pdf_path)
-  
+
   # Chargement du pdf concaténé souhaité
   uploaded_doc <- google_upload(
     INSEE_path,
     base_url = "https://generativelanguage.googleapis.com/",
     api_key = cle_API
   )
-  
+
   # Initialisation des dates
   current_date <- as.Date(dt)
   mois_index <- as.integer(format(current_date, "%m"))
   year_current <- as.integer(format(current_date, "%Y"))
-  trimestre_index <- if (mois_index %in% c(1,11,12)) 4 else if (mois_index %in% 2:4) 1 else if (mois_index %in% 5:7) 2 else 3
+  trimestre_index <- if (mois_index %in% c(1, 11, 12)) 4 else if (mois_index %in% 2:4) 1 else if (mois_index %in% 5:7) 2 else 3
   year_prev <- if (mois_index == 1 && trimestre_index == 4) year_current - 1 else year_current
-  prompt_text <- prompt_template("INSEE", current_date, trimestre_index ,
-                                       year_prev)
-  
+  prompt_text <- prompt_template(
+    "INSEE", current_date, trimestre_index,
+    year_prev
+  )
+
   # appel à Gemini en intégrant le document voulu
   out_list <- future_lapply(seq_len(n_repro), function(i) {
-    tryCatch({
-      resp <- chat_gemini$chat(uploaded_doc, prompt_text)
-      return(resp)}, error = function(e) {
+    tryCatch(
+      {
+        resp <- chat_gemini$chat(uploaded_doc, prompt_text)
+        return(resp)
+      },
+      error = function(e) {
         message("API error: ", conditionMessage(e))
         return(NA_character_)
-      })
-    
+      }
+    )
   }, future.seed = TRUE)
-  
+
   # Parse les résultats
-  histoires <- sapply(out_list, function(x) {if (is.list(x) && !is.null(x$text)) {
-    return(x$text)
-  } else if (is.character(x)) {
-    return(x)
-  } else {
-    return(NA_character_)
-  }})
+  histoires <- sapply(out_list, function(x) {
+    if (is.list(x) && !is.null(x$text)) {
+      return(x$text)
+    } else if (is.character(x)) {
+      return(x)
+    } else {
+      return(NA_character_)
+    }
+  })
   parsed_list <- lapply(histoires, function(txt) {
-    if (is.null(txt) || length(txt) == 0) return(list(forecast = NA_real_, confidence = NA_integer_, raw = NA_character_))
+    if (is.null(txt) || length(txt) == 0) {
+      return(list(forecast = NA_real_, confidence = NA_integer_, raw = NA_character_))
+    }
     m <- regmatches(txt, regexec(forecast_confidence_pattern, txt))
     if (length(m[[1]]) >= 3) {
       list(forecast = as.numeric(m[[1]][2]), confidence = as.integer(m[[1]][3]), raw = txt)
@@ -281,15 +310,15 @@ for (dt in as.Date(dates_12$`Date Prevision`)) {
       list(forecast = NA_real_, confidence = NA_integer_, raw = txt)
     }
   })
-  
-  #Df des résultats
+
+  # Df des résultats
   df_insee <- data.frame(Date = as.character(current_date), Prompt = prompt_text, stringsAsFactors = FALSE)
   for (i in seq_len(n_repro)) {
-    df_insee[[paste0("forecast_", i)]]  <- parsed_list[[i]]$forecast
+    df_insee[[paste0("forecast_", i)]] <- parsed_list[[i]]$forecast
     df_insee[[paste0("confidence_", i)]] <- parsed_list[[i]]$confidence
     df_insee[[paste0("answer_", i)]] <- parsed_list[[i]]$raw
   }
-  
+
   results_INSEE[[row_id_INSEE]] <- df_insee
   row_id_INSEE <- row_id_INSEE + 1
   Sys.sleep(0.5)
@@ -300,20 +329,8 @@ df_results_text_12_INSEE <- do.call(rbind, results_INSEE)
 
 
 # Enregistrement
-write.xlsx(df_results_text_12_INSEE, file = "Results/INSEE_text_12.xlsx", sheetName = 'prevision', rowNames = FALSE)
+write.xlsx(df_results_text_12_INSEE, file = "Results/INSEE_text_12.xlsx", sheetName = "prevision", rowNames = FALSE)
 print("Enregistré: Results/INSEE_text_12.xlsx \n")
 
 t2 <- Sys.time()
 print(diff(range(t1, t2)))
-
-
-
-
-
-
-
-
-
-
-
-
