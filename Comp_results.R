@@ -62,6 +62,35 @@ stats_both <- stats_both |>
 stats_both <- stats_both |>
   mutate(Mois_Label = str_replace(Mois_Label, "Mois ", "M"))
 
+#Chargement PIB pour calculer les erreurs
+
+##Nettoyage du PIB 
+df_PIB <- read_xlsx("Data_BDF_INSEE.xlsx", sheet = "trimestriel")
+
+
+pib <- df_PIB |>
+  mutate(Date = as.Date(dates), 
+         forecast_year = year(Date), 
+         Month = month(Date), 
+         forecast_quarter = case_when( 
+           Month == 2 ~ 1,
+           Month == 5 ~ 2,
+           Month == 8 ~ 3,
+           Month == 11 ~ 4
+         )
+  )
+
+err_join <- left_join(stats_both, pib, by = c("forecast_year", "forecast_quarter")) 
+err_join <- err_join |> 
+  select(!Date.y) |>
+  mutate(Date = Date.x,
+         errors = PIB_PR - median_forecast,
+         .keep = "unused")
+
+
+
+err_join_comp <- left_join(stats_both, pib, by = c("forecast_year", "forecast_quarter")) 
+
 ####################################
 # Stats descriptives
 ####################################
@@ -137,28 +166,6 @@ print(density_prev)
 
 #boxplot des erreurs
 
-##Nettoyage du PIB 
-df_PIB <- read_xlsx("Data_BDF_INSEE.xlsx", sheet = "trimestriel")
-
-
-pib <- df_PIB |>
-  mutate(Date = as.Date(dates), 
-         forecast_year = year(Date), 
-         Month = month(Date), 
-         forecast_quarter = case_when( 
-           Month == 2 ~ 1,
-           Month == 5 ~ 2,
-           Month == 8 ~ 3,
-           Month == 11 ~ 4
-         )
-  )
-
-err_join <- left_join(stats_both, pib, by = c("forecast_year", "forecast_quarter")) 
-err_join <- err_join |> 
-  select(!Date.y) |>
-  mutate(Date = Date.x,
-         errors = PIB_PR - median_forecast,
-         .keep = "unused")
 
 boxplot_err <- ggplot(err_join, aes(x = source, y = errors, fill = source)) +
   geom_boxplot(alpha = 0.6, outlier.colour = "red", outlier.shape = 1) +
@@ -258,7 +265,58 @@ density_conf_nocovid <- ggplot(stats_both_nocovid, aes(x = median_conf, fill = s
 print(density_conf_nocovid)
 
 
+#################################################################################
+# Comparaison des RMSE selon PIB ou PIB_PR
+#################################################################################
 
+# (à lancer après déclaration des variables ci-dessus)
+err_join_comp <- err_join_comp |> 
+  mutate(Date = Date.x,
+         errors_PIB_PR = PIB_PR - median_forecast,
+         errors_PIB = PIB - median_forecast,
+         .keep = "unused")
+
+results_diff <- err_join_comp |>
+  group_by(Mois_Label, source) |>
+  summarise(
+    # Stats PIB_PR
+    MAE_PR   = mean(abs(errors_PIB_PR), na.rm = TRUE),
+    RMSE_PR  = sqrt(mean(errors_PIB_PR^2, na.rm = TRUE)),
+
+    # Stats PIB
+    MAE_Rev  = mean(abs(errors_PIB), na.rm = TRUE),
+    RMSE_Rev = sqrt(mean(errors_PIB^2, na.rm = TRUE)),
+
+    # Comp ( - -> erreur plus faible pour PIB - prev)
+    Diff_RMSE = RMSE_Rev - RMSE_PR,
+    .groups = "drop"
+  )
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+################################################################################
+# MEME ANALYSE QUE Comp_results_function.R (mais ici sans fonction pour 
+# l'analyse des RMSE)
 
 
 ################################################################################
@@ -303,6 +361,7 @@ df_rank_mean <- df_ranked |>
     .groups = 'drop'
   ) |> 
   arrange(Mean_Rank_MAE)
+
 
 ################################################################################
 #Classement meilleurs modèle (RMSE)
