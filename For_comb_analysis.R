@@ -176,9 +176,9 @@ df_synergy <- df_synergy_prep |>
     .groups = "drop"
   ) |>
   mutate(
-    `RMSE/ RMSE` = Median_RMSE_Combo / Median_RMSE_Single,
+    `% Gain Median` = (Median_RMSE_Single - Median_RMSE_Combo) / Median_RMSE_Combo,
 
-    `% Gain` = ( Best_Single_RMSE - Best_Combo_RMSE ) / Best_Combo_RMSE,
+    `% Gain Best` = (Best_Single_RMSE - Best_Combo_RMSE ) / Best_Combo_RMSE,
   )
 
 
@@ -214,8 +214,9 @@ ggplot(df_synergy, aes(y = Scenario)) +
 
 # df calcul de gains
 df_export <- df_synergy |> 
-        select(Scenario, Month, `Best Model`, `Best Combination`,  `% Gain`, `RMSE/ RMSE`) |> 
-        mutate(`% Gain` = percent(`% Gain`, accuracy = 0.01))
+        select(Scenario, Month, `Best Model`, `Best Combination`,  `% Gain Best`, `% Gain Median`) |> 
+        mutate(`% Gain Best` = percent(`% Gain Best`, accuracy = 0.01),
+               `% Gain Median` = percent(`% Gain Median`, accuracy = 0.01))
 
 
 
