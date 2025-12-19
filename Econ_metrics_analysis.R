@@ -1,4 +1,5 @@
-# Calcul MAE et RMSE de ISMA et AR(2)
+# Calcul MAE et RMSE des indicateurs de climat BDF et INSEE ET des
+#indicateurs de sentiments LLM-AR BDF et INSEE
 
 source("LLM_Sentiment_AR.R")
 source("LLM_AR_climat.R")

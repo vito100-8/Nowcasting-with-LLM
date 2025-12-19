@@ -1,3 +1,6 @@
+#Objectif : dresser la liste des différences entre les fichiers de résultats initiaux et ceux traités avec le covid
+
+
 source("Library_Nowcasting_LLM.R")
 
 # Conversion en format long
@@ -165,6 +168,8 @@ for (model_name in names(file_pairs)) {
 }
 
 # Combinaison de tous les résultats en un seul DF
+
+
 final_difference_table <- bind_rows(all_difference_metrics)
 
 final_difference_table <- final_difference_table |>

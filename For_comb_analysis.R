@@ -3,8 +3,10 @@
 
 source("LLM_for_comb_function.R")
 
+#Avec le réglage window = 20 la période va de 2020 à 2025
+
 ################################################################################
-# 1. CONSOLIDATION ET NETTOYAGE DES RÉSULTATS
+# CONSOLIDATION ET NETTOYAGE DES RÉSULTATS
 ################################################################################
 
 # Modèles de combinaisons
@@ -19,35 +21,6 @@ all_results_objects <- list(
 )
 
 
-# Fonction d'extraction pour chaque comb
-extract_data_clean <- function(scenario_name, res_obj) {
-  full_df <- data.frame()
-  # On garde la période 2020-2025 et post covid (2022-)
-  target_periods <- intersect(names(res_obj), c("Global", "P2"))
-  
-  for (per in target_periods) {
-    for (month in c("Mois_1", "Mois_2", "Mois_3")) {
-      mat <- res_obj[[per]][[month]]
-      if (!is.null(mat)) {
-        df_tmp <- as.data.frame(t(mat))
-        
-        # On garde les colonnes qui nous intéressent
-        if(ncol(df_tmp) >= 2) {
-          colnames(df_tmp)[1:2] <- c("MAE", "RMSE")
-        }
-        
-        df_tmp$Modele_Raw <- rownames(df_tmp)
-        df_tmp$Scenario   <- scenario_name
-        df_tmp$Periode    <- per
-        df_tmp$Mois    <- month
-        
-        full_df <- bind_rows(full_df, df_tmp)
-      }
-    }
-  }
-  return(full_df)
-}
-
 # df avec tous les résultats
 df_master <- bind_rows(lapply(names(all_results_objects), function(x) extract_data_clean(x, all_results_objects[[x]])))
 
@@ -56,149 +29,84 @@ df_clean <- df_master |>
   mutate(
     # Type de combinaison
     Type = ifelse(Modele_Raw %in% c("AVG", "INV", "GR", "CONF"), "Combinaison", "Modele_Seul"),
-    
+
     # Standardisation des noms
     Display_Name = case_when(
       Type == "Combinaison" ~ paste0(Modele_Raw, " [", Scenario, "]"),
-      
-      #Si modèles seules avec noms répétitifs
+
+      # Si modèles seules avec noms répétitifs
       Scenario == "Tous BDF" & !grepl("^BDF_", Modele_Raw) ~ paste0("BDF_", Modele_Raw),
       Scenario == "Tous INSEE" & !grepl("^INSEE_", Modele_Raw) ~ paste0("INSEE_", Modele_Raw),
       Scenario == "Tous LLM" & !grepl("^INSEE_", Modele_Raw) ~ paste0("INSEE_", Modele_Raw),
       Scenario == "Tous LLM" & !grepl("^BDF", Modele_Raw) ~ paste0("BDF_", Modele_Raw),
-      
-      
-      #Expliciter le nom bdf
+
+
+      # Expliciter le nom bdf
       Modele_Raw == "BDF" ~ "BDF_Text",
       Modele_Raw == "INSEE" ~ "INSEE_Text",
-      
+
       # Sinon on garde le nom
       TRUE ~ Modele_Raw
     )
   ) |>
-  #Enlever les doublons
+  # Enlever les doublons
   group_by(Periode, Mois, Display_Name) |>
-  slice_min(RMSE, n=1, with_ties = FALSE) |> 
+  slice_min(RMSE, n = 1, with_ties = FALSE) |>
   ungroup()
 
 
-################################################################################
-# 2. FONCTION DE CLASSEMENT ET AFFICHAGE
-################################################################################
-
-#TOP 10 des modèles et on précise s'il s'agit d'une combinaison ou d'un modèle simple (RMSE)
-plot_top10_ranking <- function(data, target_period, plot_title) {
-  
-  #  10 Meilleurs
-  df_top10 <- data |>
-    filter(Periode == target_period) |>
-    group_by(Mois) |>
-    arrange(RMSE) |>
-    slice_head(n = 10) |> 
-    ungroup() |> 
-    mutate(
-      #avoir un ordre croissant entre modèles
-      Unique_ID = paste0(Display_Name, "__", Mois), 
-      Unique_ID = fct_reorder(Unique_ID, RMSE, .desc = TRUE)
-    )
-  df_top10 <- df_top10 |>
-    mutate(Month = gsub("Mois_", "M", Mois),
-           Type =  ifelse(Type == "Combinaison", "Combination", "Single Model"))
-  
-  # Graphique
-  ggplot(df_top10, aes(x = RMSE, y = Unique_ID, fill = Type)) +
-    geom_col(width = 0.7, alpha = 0.9) +
-    
-    # Valeurs
-    geom_text(aes(label = round(RMSE, 4)), hjust = -0.1, size = 3, fontface = "bold") +
-    
-    # Facet par Mois
-    facet_wrap(~Month, scales = "free_y", ncol = 3) +
-    
-    #Détails légende
-    scale_fill_manual(values = c("Combination" = "#E67E22", "Single Model" = "#34495E")) +
-    scale_y_discrete(labels = function(x) sub("__.*", "", x)) +
-    scale_x_continuous(expand = expansion(mult = c(0, 0.15))) +
-    labs(
-      title = paste("Models ranking (RMSE)" ),
-      subtitle = plot_title,
-      x = "RMSE",
-      y = ""
-    ) +
-    
-    theme_bw() +
-    theme(
-      plot.title = element_text(face = "bold", size = 14),
-      strip.background = element_rect(fill = "#2C3E50"),
-      strip.text = element_text(color = "white", face = "bold"),
-      legend.position = "bottom",
-      axis.text.y = element_text(size = 9, face = "bold")
-    )
-}
-
-# Période 2020-2025
-print(plot_top10_ranking(df_clean, "Global", "2015-2025"))
-
-# Période Post-Covid (P2)
-
-if ("P2" %in% unique(df_clean$Periode)) {
-  print(plot_top10_ranking(df_clean, "P2", "2022-2025"))
-}
 
 ################################################################################
-# 3. COMBINAISON OU MODELE SEUL ?
+# Analyse comparative Combinaison vs Modèle Seul
 ################################################################################
 
-# créer le df 
+# créer le df
 df_synergy_prep <- df_master |>
   rename(Month = Mois) |>
   mutate(
-    Month = gsub("Mois_", "M", Month), 
+    Month = gsub("Mois_", "M", Month),
     Modele = Modele_Raw,
     Type = ifelse(Modele %in% c("AVG", "INV", "GR", "CONF"), "Combinaison", "Modele_Seul")
   )
 
 # Calcul des meilleurs modèles et des modèles médians
 df_synergy <- df_synergy_prep |>
-  filter(Periode == "Global") |> 
+  filter(Periode == "Global") |>
   group_by(Scenario, Month) |>
   summarise(
-    #RMSE Médian des modèles seuls 
+    # RMSE Médian des modèles seuls
     Median_RMSE_Single = median(RMSE[Type == "Modele_Seul"], na.rm = TRUE),
-    # RMSE Médian des méthodes de combinaison 
-    Median_RMSE_Combo  = median(RMSE[Type == "Combinaison"], na.rm = TRUE),
-    # Meilleur Modèle Seul 
+    # RMSE Médian des méthodes de combinaison
+    Median_RMSE_Combo = median(RMSE[Type == "Combinaison"], na.rm = TRUE),
+    # Meilleur Modèle Seul
     Best_Single_RMSE = min(RMSE[Type == "Modele_Seul"], na.rm = TRUE),
     `Best Model` = Modele[Type == "Modele_Seul"][which.min(RMSE[Type == "Modele_Seul"])],
-    # Meilleure Combinaison 
-    Best_Combo_RMSE  = min(RMSE[Type == "Combinaison"], na.rm = TRUE),
-    `Best Combination`  = Modele[Type == "Combinaison"][which.min(RMSE[Type == "Combinaison"])],
+    # Meilleure Combinaison
+    Best_Combo_RMSE = min(RMSE[Type == "Combinaison"], na.rm = TRUE),
+    `Best Combination` = Modele[Type == "Combinaison"][which.min(RMSE[Type == "Combinaison"])],
     .groups = "drop"
   ) |>
   mutate(
     `% Gain Median` = (Median_RMSE_Single - Median_RMSE_Combo) / Median_RMSE_Combo,
-
-    `% Gain Best` = (Best_Single_RMSE - Best_Combo_RMSE ) / Best_Combo_RMSE,
+    `% Gain Best` = (Best_Single_RMSE - Best_Combo_RMSE) / Best_Combo_RMSE,
   )
-
 
 
 # Graphique
 ggplot(df_synergy, aes(y = Scenario)) +
   geom_segment(aes(x = Best_Single_RMSE, xend = Best_Combo_RMSE, y = Scenario, yend = Scenario), color = "grey70") +
-  
+
   # Point Rouge : Meilleur Modèle Seul
   geom_point(aes(x = Best_Single_RMSE, color = "Best Model"), size = 3.5) +
-  
+
   # Point Vert : Meilleure Combinaison
   geom_point(aes(x = Best_Combo_RMSE, color = "Best Combination"), size = 3.5) +
-  
+
   # Séparation par Mois
   facet_wrap(~Month, scales = "free_x") +
-  
-  #Légende
+
+  # Légende
   scale_color_manual(values = c("Best Model" = "#E74C3C", "Best Combination" = "#27AE60")) +
-  
   labs(
     title = "Forecast vs Combination Forecast",
     x = "RMSE",
@@ -212,29 +120,30 @@ ggplot(df_synergy, aes(y = Scenario)) +
     axis.text.y = element_text(face = "bold")
   )
 
-# df calcul de gains
-df_export <- df_synergy |> 
-        select(Scenario, Month, `Best Model`, `Best Combination`,  `% Gain Best`, `% Gain Median`) |> 
-        mutate(`% Gain Best` = percent(`% Gain Best`, accuracy = 0.01),
-               `% Gain Median` = percent(`% Gain Median`, accuracy = 0.01))
+# Tableau des gains/pertes (tableau latex)
+df_export <- df_synergy |>
+  select(Scenario, Month, `Best Model`, `Best Combination`, `% Gain Best`, `% Gain Median`) |>
+  mutate(
+    `% Gain Best` = percent(`% Gain Best`, accuracy = 0.01),
+    `% Gain Median` = percent(`% Gain Median`, accuracy = 0.01)
+  )
 
 
-
-# Paramètres LaTeX
+## Paramètres LaTeX
 caption_text <- "Accuracy gain/loss per scenario (RMSE)"
 label_text <- "tab:gain_scenario"
 
 latex_table <- df_export |>
   kable(
-    format = "latex", 
+    format = "latex",
     caption = caption_text,
     label = label_text,
-    booktabs = TRUE, 
-    align = c('l', 'l', 'l', 'l', 'c') 
+    booktabs = TRUE,
+    align = c("l", "l", "l", "l", "c")
   ) |>
   kable_styling(
-    full_width = FALSE 
+    full_width = FALSE
   )
 
-# Affichage du code LaTeX 
+# Affichage du code LaTeX
 cat(latex_table)

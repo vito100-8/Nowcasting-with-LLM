@@ -1017,9 +1017,9 @@ gr_rolling_month <- function(y, model_list, dates, start_covid, end_covid, rolli
   ))
 }
 
-
+############################################################################
 # Test sans suppression covid
-####################################################################################################
+############################################################################
 
 
 gr_rolling_month_standard <- function(y, model_list, rolling_window) {
@@ -1137,4 +1137,103 @@ rolling_inversed_weight_month_standard <- function(y, model_list, rolling_window
     nowcast = final_nowcast,
     weights = weights_list
   ))
+}
+
+
+###############################################################################
+# Forecast Combination analysis 
+##############################################################################
+
+
+# Fonction d'extraction pour chaque comb
+extract_data_clean <- function(scenario_name, res_obj) {
+  full_df <- data.frame()
+  # On garde la période 2020-2025 et post covid (2022-)
+  target_periods <- intersect(names(res_obj), c("Global", "P2"))
+  
+  for (per in target_periods) {
+    for (month in c("Mois_1", "Mois_2", "Mois_3")) {
+      mat <- res_obj[[per]][[month]]
+      if (!is.null(mat)) {
+        df_tmp <- as.data.frame(t(mat))
+        
+        # On garde les colonnes qui nous intéressent
+        if (ncol(df_tmp) >= 2) {
+          colnames(df_tmp)[1:2] <- c("MAE", "RMSE")
+        }
+        
+        df_tmp$Modele_Raw <- rownames(df_tmp)
+        df_tmp$Scenario <- scenario_name
+        df_tmp$Periode <- per
+        df_tmp$Mois <- month
+        
+        full_df <- bind_rows(full_df, df_tmp)
+      }
+    }
+  }
+  return(full_df)
+}
+
+
+################################
+# classement modèle et graphique
+################################
+
+# TOP 10 des modèles et on précise s'il s'agit d'une combinaison ou d'un modèle simple (RMSE)
+plot_top10_ranking <- function(data, target_period, plot_title) {
+  #  10 Meilleurs
+  df_top10 <- data |>
+    filter(Periode == target_period) |>
+    group_by(Mois) |>
+    arrange(RMSE) |>
+    slice_head(n = 10) |>
+    ungroup() |>
+    mutate(
+      # avoir un ordre croissant entre modèles
+      Unique_ID = paste0(Display_Name, "__", Mois),
+      Unique_ID = fct_reorder(Unique_ID, RMSE, .desc = TRUE)
+    )
+  df_top10 <- df_top10 |>
+    mutate(
+      Month = gsub("Mois_", "M", Mois),
+      Type = ifelse(Type == "Combinaison", "Combination", "Single Model")
+    )
+  
+  # Graphique
+  ggplot(df_top10, aes(x = RMSE, y = Unique_ID, fill = Type)) +
+    geom_col(width = 0.7, alpha = 0.9) +
+    
+    # Valeurs
+    geom_text(aes(label = round(RMSE, 4)), hjust = -0.1, size = 3, fontface = "bold") +
+    
+    # Facet par Mois
+    facet_wrap(~Month, scales = "free_y", ncol = 3) +
+    
+    # Détails légende
+    scale_fill_manual(values = c("Combination" = "#E67E22", "Single Model" = "#34495E")) +
+    scale_y_discrete(labels = function(x) sub("__.*", "", x)) +
+    scale_x_continuous(expand = expansion(mult = c(0, 0.15))) +
+    labs(
+      title = paste("Models ranking (RMSE)"),
+      subtitle = plot_title,
+      x = "RMSE",
+      y = ""
+    ) +
+    theme_bw() +
+    theme(
+      plot.title = element_text(face = "bold", size = 14),
+      strip.background = element_rect(fill = "#2C3E50"),
+      strip.text = element_text(color = "white", face = "bold"),
+      legend.position = "bottom",
+      axis.text.y = element_text(size = 9, face = "bold")
+    )
+}
+
+# Période 2020-2025
+print(plot_top10_ranking(df_clean, "Global", "2015-2025"))
+
+# Période Post-Covid (P2)
+
+if ("P2" %in% unique(df_clean$Periode)) {
+  print(plot_top10_ranking(df_clean, "P2", "2022-2025"))
 }
